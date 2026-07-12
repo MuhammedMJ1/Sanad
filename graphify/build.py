@@ -276,7 +276,10 @@ def _semantic_id_remap(nodes: list, root: str | None) -> dict:
             continue
         sf_norm = _norm_source_file(str(sf), root) or str(sf)
         rel = Path(sf_norm)
-        if rel.is_absolute():
+        # POSIX-absolute ("/abs/...") must also count on Windows, where
+        # Path("/abs").is_absolute() is False — graphs travel across checkout
+        # platforms and an abs path must never leak into an id.
+        if rel.is_absolute() or sf_norm.startswith(("/", "\\")):
             continue  # can't relativize (no/failed root) — leave id untouched
         if not rel.name:
             # source_file equals the scan root, so _norm_source_file relativized it

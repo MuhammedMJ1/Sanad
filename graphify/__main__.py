@@ -13,7 +13,11 @@ from pathlib import Path
 try:
     from importlib.metadata import version as _pkg_version
 
-    __version__ = _pkg_version("graphifyy")
+    try:
+        __version__ = _pkg_version("sanad")
+    except Exception:
+        # Pre-rename installs carry the old distribution metadata.
+        __version__ = _pkg_version("graphifyy")
 except Exception:
     __version__ = "unknown"
 
@@ -198,7 +202,7 @@ def _check_skill_version(skill_dst: Path) -> None:
             print(
                 f"  warning: skill is from graphify {installed}, but the package is "
                 f"{__version__} (older). Upgrade the package "
-                f"(e.g. 'uv tool upgrade graphifyy' or 'pip install -U graphifyy'); "
+                f"(e.g. 'uv tool upgrade sanad' or 'pip install -U sanad'); "
                 f"running 'graphify install' would downgrade the skill.",
                 file=sys.stderr,
             )
@@ -464,7 +468,7 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) >= 2 and sys.argv[1] in ("-v", "--version", "version"):
-        print(f"graphify {__version__}")
+        print(f"sanad {__version__}")
         return
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "-?"):
@@ -478,6 +482,32 @@ def main() -> None:
         print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
         print("  explain \"X\"             plain-language explanation of a node and its neighbors")
         print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
+        print("  ops \"<op>\"              run one graph-ops thinking step (or pipe ops via stdin)")
+        print("    --help-ops              print the op language (find/expand/callers/path/...)")
+        print("    --new                   start a fresh session (refs/notes reset)")
+        print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
+        print("  think \"<question>\"      autonomous graph-ops reasoning via the configured LLM")
+        print("    --budget N              max ops before giving up (default 15)")
+        print("    --backend B / --model M override the LLM backend/model")
+        print("    --verify                pipe the answer through the hallucination gate")
+        print("  council \"<question>\"    lens debate: usage/dependency/structure voices + verified consensus")
+        print("    --lenses a,b,c          which voices to convene (callers,callees,structure,evidence)")
+        print("    --budget-per-lens N     ops per voice (default 6)")
+        print("    --no-verify             skip the hallucination gate on the consensus")
+        print("    --json                  emit machine-readable result")
+        print("  predict \"<target>\"      predict a code edit's blast radius; save an impact contract")
+        print("    --depth N               reverse-dependency hops to walk (default 2)")
+        print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
+        print("    --json                  emit the contract as JSON")
+        print("  check-impact            after editing + `graphify update .`: diff reality vs contract")
+        print("    --strict                exit 3 on DEVIATION (gate mode)")
+        print("    --json                  emit machine-readable report")
+        print("  verify \"<text>\"         fact-check structural claims in text against graph.json")
+        print("    --claims <file.json>    structured claims list instead of free text")
+        print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
+        print("    --max-hops N            max hops for indirect support (default 3)")
+        print("    --strict                exit 2 when any claim is REFUTED (gate mode)")
+        print("    --json                  emit machine-readable verdicts")
         print("  diagnose multigraph    report same-endpoint edge collapse risk in graph.json")
         print("    --graph <path>          path to graph/extraction JSON")
         print("                            (default graphify-out/graph.json)")

@@ -1977,7 +1977,7 @@ def test_extract_warns_when_sql_extra_missing(tmp_path, capsys, monkeypatch):
 
     assert "2 .sql file(s)" in err
     assert "tree_sitter_sql not installed" in err
-    assert 'graphifyy[sql]' in err
+    assert 'sanad[sql]' in err
     assert "#1745" in err
     # the Python file still extracts normally
     labels = [n.get("label") for n in result["nodes"]]

@@ -539,9 +539,9 @@ def _read_files(units: "list[Path | FileSlice]", root: Path) -> str:
             print(f"[graphify] skipping {p}: symlink target outside corpus root", file=sys.stderr)
             continue
         try:
-            rel = str(p.relative_to(root))
+            rel = p.relative_to(root).as_posix()
         except ValueError:
-            rel = str(p)
+            rel = p.as_posix()
         try:
             if isinstance(u, FileSlice):
                 content = read_slice_text(u)
@@ -649,9 +649,9 @@ def _build_image_refs(image_files: list[Path], root: Path, *, read_bytes: bool =
             print(f"[graphify] skipping image {p}: symlink target outside corpus root", file=sys.stderr)
             continue
         try:
-            rel = str(p.relative_to(root))
+            rel = p.relative_to(root).as_posix()
         except ValueError:
-            rel = str(p)
+            rel = p.as_posix()
         media = _IMAGE_MEDIA_TYPES.get(p.suffix.lower(), "image/png")
         raw: bytes | None = None
         if read_bytes:
@@ -942,14 +942,14 @@ def _default_model_for_backend(backend: str) -> str:
 def _backend_pkg_hint(pkg: str, extra: str) -> str:
     """Package-missing message that works for the recommended `uv tool` install.
 
-    `uv tool install graphifyy` puts graphify in an isolated venv, so a plain
+    `uv tool install sanad` puts graphify in an isolated venv, so a plain
     `pip install <pkg>` never reaches it - the friction a user hits when a
     backend needs anthropic/openai/boto3 and the only advice was "pip install".
     Point at the extra and the uv path first, then the pip/venv fallback.
     """
     return (
         f"the '{pkg}' package is required for this backend but is not installed. "
-        f"Install it with:  uv tool install \"graphifyy[{extra}]\" --force  "
+        f"Install it with:  uv tool install \"sanad[{extra}]\" --force  "
         f"(uv tool), or  pip install {pkg}  (pip/venv install)."
     )
 
@@ -1373,7 +1373,7 @@ def _call_bedrock(model: str, user_message: str, max_tokens: int = 8192, *, deep
         import botocore.exceptions
     except ImportError as exc:
         raise ImportError(
-            "AWS Bedrock extraction requires boto3. Run: pip install graphifyy[bedrock]"
+            "AWS Bedrock extraction requires boto3. Run: pip install sanad[bedrock]"
         ) from exc
 
     region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"

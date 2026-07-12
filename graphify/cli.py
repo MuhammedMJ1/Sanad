@@ -697,6 +697,452 @@ def dispatch_command(cmd: str) -> None:
             nodes_returned=hops,
         )
 
+    elif cmd == "ops":
+        # Graph-ops engine, agent-driven: execute thinking ops directly against
+        # graph.json. Session state (refs, notes) persists in graphify-out/ so
+        # ANY agent can run a multi-step investigation across CLI calls with
+        # short n<K> refs — no API key, no LLM, deterministic.
+        from graphify.affected import load_graph as _load_mind_graph
+        from graphify.graphmind import OPS_HELP, load_session, save_session
+
+        graph_path = _default_graph_path()
+        fresh = False
+        op_parts: list[str] = []
+        args = sys.argv[2:]
+        i = 0
+        while i < len(args):
+            a = args[i]
+            if a == "--graph" and i + 1 < len(args):
+                graph_path = args[i + 1]
+                i += 2
+            elif a == "--new":
+                fresh = True
+                i += 1
+            elif a == "--help-ops":
+                print(OPS_HELP)
+                return
+            else:
+                op_parts.append(a)
+                i += 1
+        gp = Path(graph_path).resolve()
+        if not gp.exists():
+            print(f"error: graph file not found: {gp}", file=sys.stderr)
+            sys.exit(1)
+        _enforce_graph_size_cap_or_exit(gp)
+        G = _load_mind_graph(gp)
+        if fresh:
+            from graphify.graphmind import MindSession
+            session = MindSession(G)
+        else:
+            session = load_session(gp.parent, G)
+        # Ops come from the command line (one op) or stdin (one per line).
+        op_lines = [" ".join(op_parts)] if op_parts else [
+            ln for ln in sys.stdin.read().splitlines() if ln.strip()
+        ]
+        if not any(ln.strip() for ln in op_lines):
+            print(
+                'Usage: graphify ops "<op>"  (or pipe ops, one per line)\n'
+                "       graphify ops --help-ops   for the op language\n"
+                "       graphify ops --new ...    to reset the session",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        for ln in op_lines:
+            print(f"> {ln}")
+            print(session.execute(ln))
+        save_session(gp.parent, session)
+
+    elif cmd == "think":
+        # Graph-ops engine, autonomous: the configured LLM backend emits one
+        # op per step, the engine executes it locally, and the loop ends when
+        # the model answers or the op budget runs out. --verify pipes the
+        # final answer through the factcheck hallucination gate.
+        from graphify.affected import load_graph as _load_mind_graph
+        from graphify.graphmind import think as _think
+
+        graph_path = _default_graph_path()
+        backend_arg: str | None = None
+        model_arg: str | None = None
+        budget = 15
+        do_verify = False
+        question_parts: list[str] = []
+        args = sys.argv[2:]
+        i = 0
+        while i < len(args):
+            a = args[i]
+            if a == "--graph" and i + 1 < len(args):
+                graph_path = args[i + 1]
+                i += 2
+            elif a == "--backend" and i + 1 < len(args):
+                backend_arg = args[i + 1]
+                i += 2
+            elif a == "--model" and i + 1 < len(args):
+                model_arg = args[i + 1]
+                i += 2
+            elif a == "--budget" and i + 1 < len(args):
+                try:
+                    budget = max(1, int(args[i + 1]))
+                except ValueError:
+                    print(f"error: --budget must be an integer, got {args[i + 1]!r}", file=sys.stderr)
+                    sys.exit(1)
+                i += 2
+            elif a == "--verify":
+                do_verify = True
+                i += 1
+            elif not a.startswith("--"):
+                question_parts.append(a)
+                i += 1
+            else:
+                print(f"error: unknown think option {a!r}", file=sys.stderr)
+                sys.exit(1)
+        question = " ".join(question_parts).strip()
+        if not question:
+            print(
+                'Usage: graphify think "<question>" [--budget N] [--backend B] '
+                "[--model M] [--verify] [--graph path]",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        gp = Path(graph_path).resolve()
+        if not gp.exists():
+            print(f"error: graph file not found: {gp}", file=sys.stderr)
+            sys.exit(1)
+        _enforce_graph_size_cap_or_exit(gp)
+        from graphify.llm import detect_backend, estimate_cost
+        backend = backend_arg or detect_backend()
+        if not backend:
+            print(
+                "error: no LLM backend configured. Set GEMINI_API_KEY (or another "
+                "provider key), or pass --backend.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        G = _load_mind_graph(gp)
+        usage: dict = {}
+        answer, trace = _think(
+            G, question, backend=backend, model=model_arg, budget=budget,
+            usage_out=usage,
+            on_step=lambda op, result: print(f"> {op}\n{result}\n"),
+        )
+        if answer is None:
+            print("[!] op budget exhausted before an answer was reached.", file=sys.stderr)
+            sys.exit(4)
+        print(f"Answer: {answer}")
+        tin, tout = usage.get("input", 0), usage.get("output", 0)
+        if tin or tout:
+            cost = estimate_cost(backend, tin, tout)
+            print(f"[tokens: {tin} in / {tout} out across {len(trace)} step(s), "
+                  f"est. cost (~{backend}): ${cost:.4f}]")
+        if do_verify:
+            from graphify.factcheck import render_report, run_verify
+            verdicts, summary = run_verify(gp, text=answer)
+            if verdicts:
+                print("\n-- hallucination gate --")
+                print(render_report(verdicts))
+                if summary.get("refuted", 0) > 0:
+                    sys.exit(2)
+            else:
+                print("\n-- hallucination gate: no checkable claims in the answer --")
+
+    elif cmd == "council":
+        # Lens debate council: several voices of the SAME model each run a
+        # scoped graph-ops investigation (usage / dependencies / structure /
+        # evidence), a reconciliation merges them, and the factcheck gate
+        # forces a revision of any refuted claim. Exit 2 if refuted claims
+        # survive the revision cap.
+        from graphify.affected import load_graph as _load_mind_graph
+        from graphify.council import DEFAULT_LENSES, LENSES, convene, render_result
+
+        graph_path = _default_graph_path()
+        backend_arg: str | None = None
+        model_arg: str | None = None
+        lenses = DEFAULT_LENSES
+        budget_per_lens = 6
+        do_verify = True
+        json_out = False
+        question_parts: list[str] = []
+        args = sys.argv[2:]
+        i = 0
+        while i < len(args):
+            a = args[i]
+            if a == "--graph" and i + 1 < len(args):
+                graph_path = args[i + 1]
+                i += 2
+            elif a == "--backend" and i + 1 < len(args):
+                backend_arg = args[i + 1]
+                i += 2
+            elif a == "--model" and i + 1 < len(args):
+                model_arg = args[i + 1]
+                i += 2
+            elif a == "--lenses" and i + 1 < len(args):
+                lenses = tuple(x.strip() for x in args[i + 1].split(",") if x.strip())
+                i += 2
+            elif a == "--budget-per-lens" and i + 1 < len(args):
+                try:
+                    budget_per_lens = max(1, int(args[i + 1]))
+                except ValueError:
+                    print(f"error: --budget-per-lens must be an integer, got {args[i + 1]!r}", file=sys.stderr)
+                    sys.exit(1)
+                i += 2
+            elif a == "--no-verify":
+                do_verify = False
+                i += 1
+            elif a == "--json":
+                json_out = True
+                i += 1
+            elif not a.startswith("--"):
+                question_parts.append(a)
+                i += 1
+            else:
+                print(f"error: unknown council option {a!r}", file=sys.stderr)
+                sys.exit(1)
+        question = " ".join(question_parts).strip()
+        if not question:
+            print(
+                'Usage: graphify council "<question>" [--lenses callers,callees,structure,evidence]\n'
+                "                [--budget-per-lens N] [--backend B] [--model M]\n"
+                "                [--no-verify] [--json] [--graph path]\n"
+                f"Available lenses: {', '.join(sorted(LENSES))}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        gp = Path(graph_path).resolve()
+        if not gp.exists():
+            print(f"error: graph file not found: {gp}", file=sys.stderr)
+            sys.exit(1)
+        _enforce_graph_size_cap_or_exit(gp)
+        from graphify.llm import detect_backend, estimate_cost
+        backend = backend_arg or detect_backend()
+        if not backend:
+            print(
+                "error: no LLM backend configured. Set GEMINI_API_KEY (or another "
+                "provider key), or pass --backend.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        G = _load_mind_graph(gp)
+        usage: dict = {}
+
+        def _stream(phase: str, detail: str) -> None:
+            if not json_out:
+                print(f"[{phase}] {detail}")
+
+        try:
+            result = convene(
+                G, question, backend=backend, model=model_arg,
+                lenses=lenses, budget_per_lens=budget_per_lens,
+                verify=do_verify, usage_out=usage, on_step=_stream,
+            )
+        except (ValueError, RuntimeError) as e:
+            print(f"error: {e}", file=sys.stderr)
+            sys.exit(1)
+        if json_out:
+            print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
+        else:
+            print()
+            print(render_result(result))
+        tin, tout = usage.get("input", 0), usage.get("output", 0)
+        if (tin or tout) and not json_out:
+            cost = estimate_cost(backend, tin, tout)
+            print(f"\n[tokens: {tin} in / {tout} out, est. cost (~{backend}): ${cost:.4f}]")
+        if do_verify and result.gate_summary.get("refuted", 0) > 0:
+            sys.exit(2)
+
+    elif cmd == "predict":
+        # Edit blast-radius oracle, step 1: predict which files an edit will
+        # touch and save the prediction as a contract (plus a graph baseline).
+        from graphify.impact import predict_impact, render_prediction, write_contract
+        from graphify.affected import load_graph as _load_impact_graph
+        from graphify.impact import DEFAULT_DEPTH as _IMPACT_DEPTH
+
+        graph_path = _default_graph_path()
+        depth = _IMPACT_DEPTH
+        json_out = False
+        targets: list[str] = []
+        args = sys.argv[2:]
+        i = 0
+        while i < len(args):
+            a = args[i]
+            if a == "--graph" and i + 1 < len(args):
+                graph_path = args[i + 1]
+                i += 2
+            elif a == "--depth" and i + 1 < len(args):
+                try:
+                    depth = int(args[i + 1])
+                except ValueError:
+                    print(f"error: --depth must be an integer, got {args[i + 1]!r}", file=sys.stderr)
+                    sys.exit(1)
+                i += 2
+            elif a == "--json":
+                json_out = True
+                i += 1
+            elif not a.startswith("--"):
+                targets.append(a)
+                i += 1
+            else:
+                print(f"error: unknown predict option {a!r}", file=sys.stderr)
+                sys.exit(1)
+        if not targets:
+            print(
+                'Usage: graphify predict "<file-or-symbol>" [more targets...] '
+                "[--depth N] [--graph path] [--json]",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        gp = Path(graph_path).resolve()
+        if not gp.exists():
+            print(f"error: graph file not found: {gp}", file=sys.stderr)
+            sys.exit(1)
+        _enforce_graph_size_cap_or_exit(gp)
+        G = _load_impact_graph(gp)
+        try:
+            contract = predict_impact(G, targets, depth=depth)
+        except ValueError as e:
+            print(f"error: {e}", file=sys.stderr)
+            sys.exit(1)
+        write_contract(gp.parent, contract, gp)
+        if json_out:
+            print(json.dumps(contract, indent=2, ensure_ascii=False))
+        else:
+            print(render_prediction(contract))
+
+    elif cmd == "check-impact":
+        # Edit blast-radius oracle, step 2 (after editing + `graphify update .`):
+        # diff the current graph against the prediction-time baseline. --strict
+        # exits 3 on DEVIATION so agent hooks can force a review mechanically.
+        from graphify.impact import (
+            DEVIATION as _DEVIATION,
+            check_impact as _check_impact,
+            load_baseline,
+            load_contract,
+            render_check,
+        )
+        from graphify.affected import load_graph as _load_impact_graph
+
+        graph_path = _default_graph_path()
+        strict = False
+        json_out = False
+        args = sys.argv[2:]
+        i = 0
+        while i < len(args):
+            a = args[i]
+            if a == "--graph" and i + 1 < len(args):
+                graph_path = args[i + 1]
+                i += 2
+            elif a == "--strict":
+                strict = True
+                i += 1
+            elif a == "--json":
+                json_out = True
+                i += 1
+            else:
+                print(f"error: unknown check-impact option {a!r}", file=sys.stderr)
+                sys.exit(1)
+        gp = Path(graph_path).resolve()
+        if not gp.exists():
+            print(f"error: graph file not found: {gp}", file=sys.stderr)
+            sys.exit(1)
+        _enforce_graph_size_cap_or_exit(gp)
+        try:
+            contract = load_contract(gp.parent)
+            baseline = load_baseline(gp.parent)
+        except FileNotFoundError as e:
+            print(f"error: {e}", file=sys.stderr)
+            sys.exit(1)
+        report = _check_impact(contract, baseline, _load_impact_graph(gp))
+        if json_out:
+            print(json.dumps(report, indent=2, ensure_ascii=False))
+        else:
+            print(render_check(report))
+        if strict and report["verdict"] == _DEVIATION:
+            sys.exit(3)
+
+    elif cmd == "verify":
+        # Hallucination gate: check structural claims (from plain text or a
+        # JSON claims list) against graph.json. --strict exits 2 on any REFUTED
+        # claim so agent hooks can block unverified answers mechanically.
+        from graphify.factcheck import render_report, run_verify, summarize
+
+        graph_path = _default_graph_path()
+        text_arg: str | None = None
+        claims_file: str | None = None
+        strict = False
+        json_out = False
+        max_hops = None
+        args = sys.argv[2:]
+        i = 0
+        while i < len(args):
+            a = args[i]
+            if a == "--graph" and i + 1 < len(args):
+                graph_path = args[i + 1]
+                i += 2
+            elif a == "--text" and i + 1 < len(args):
+                text_arg = args[i + 1]
+                i += 2
+            elif a == "--claims" and i + 1 < len(args):
+                claims_file = args[i + 1]
+                i += 2
+            elif a == "--max-hops" and i + 1 < len(args):
+                try:
+                    max_hops = int(args[i + 1])
+                except ValueError:
+                    print(f"error: --max-hops must be an integer, got {args[i + 1]!r}", file=sys.stderr)
+                    sys.exit(1)
+                i += 2
+            elif a == "--strict":
+                strict = True
+                i += 1
+            elif a == "--json":
+                json_out = True
+                i += 1
+            elif text_arg is None and claims_file is None and not a.startswith("--"):
+                text_arg = a  # bare positional: treat as the text to verify
+                i += 1
+            else:
+                print(f"error: unknown verify option {a!r}", file=sys.stderr)
+                sys.exit(1)
+        gp = Path(graph_path).resolve()
+        if not gp.exists():
+            print(f"error: graph file not found: {gp}", file=sys.stderr)
+            sys.exit(1)
+        _enforce_graph_size_cap_or_exit(gp)
+        claims_json = None
+        if claims_file is not None:
+            cf = Path(claims_file)
+            if not cf.exists():
+                print(f"error: claims file not found: {cf}", file=sys.stderr)
+                sys.exit(1)
+            claims_json = cf.read_text(encoding="utf-8")
+        elif text_arg is None:
+            text_arg = sys.stdin.read()  # pipe mode: graphify verify < answer.txt
+        if not (claims_json or (text_arg or "").strip()):
+            print(
+                'Usage: graphify verify "<text>" | --text "<text>" | --claims claims.json\n'
+                "                [--graph path] [--max-hops N] [--strict] [--json]",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        try:
+            kwargs = {}
+            if max_hops is not None:
+                kwargs["max_hops"] = max_hops
+            verdicts, summary = run_verify(gp, text=text_arg, claims_json=claims_json, **kwargs)
+        except ValueError as e:
+            print(f"error: {e}", file=sys.stderr)
+            sys.exit(1)
+        if json_out:
+            print(json.dumps(
+                {"verdicts": [v.to_dict() for v in verdicts], "summary": summary},
+                indent=2,
+            ))
+        else:
+            if not verdicts:
+                print("No checkable claims found in the input.")
+            else:
+                print(render_report(verdicts))
+        if strict and summary.get("refuted", 0) > 0:
+            sys.exit(2)
+
     elif cmd == "explain":
         if len(sys.argv) < 3:
             print('Usage: graphify explain "<node>" [--graph path]', file=sys.stderr)

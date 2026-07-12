@@ -37,5 +37,5 @@ def test_anthropic_in_all_extra():
 def test_backend_pkg_hint_points_at_uv_tool_and_extra():
     msg = _backend_pkg_hint("anthropic", "anthropic")
     assert "uv tool install" in msg
-    assert 'graphifyy[anthropic]' in msg
+    assert 'sanad[anthropic]' in msg
     assert "pip install anthropic" in msg  # pip/venv fallback still mentioned

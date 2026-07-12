@@ -4378,7 +4378,7 @@ def extract(
         _extra = _EXTRA_FOR_EXTENSION.get(_ext)
         if _extra:
             _reason = _missing_dep_error[_ext].split(". ")[0]
-            _hint = f' Install it with: pip install "graphifyy[{_extra}]"'
+            _hint = f' Install it with: pip install "sanad[{_extra}]"'
         else:
             _reason = _missing_dep_error[_ext]
             _hint = ""

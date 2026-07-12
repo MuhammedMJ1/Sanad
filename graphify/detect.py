@@ -778,14 +778,21 @@ def _parse_gitignore_line(raw: str) -> str:
 
 
 def _find_vcs_root(start: Path) -> Path | None:
-    """Walk upward from start; return the first directory containing a VCS marker."""
+    """Walk upward from start; return the first directory containing a VCS marker.
+
+    The home directory is a hard ceiling and is never itself returned as a
+    VCS root: a dotfiles repo at ~ must not capture every project (or temp
+    dir) under it and leak its .gitignore into unrelated scans.
+    """
     current = start.resolve()
     home = Path.home()
     while True:
+        if current == home:
+            return None
         if any((current / m).exists() for m in _VCS_MARKERS):
             return current
         parent = current.parent
-        if parent == current or current == home:
+        if parent == current:
             return None
         current = parent
 
@@ -1233,7 +1240,7 @@ def detect(root: Path, *, follow_symlinks: bool | None = None, google_workspace:
                     total_words += _wc(md_path)
                 else:
                     # Conversion failed (library not installed) - skip with note
-                    skipped_sensitive.append(str(p) + " [office conversion failed - pip install graphifyy[office]]")
+                    skipped_sensitive.append(str(p) + " [office conversion failed - pip install sanad[office]]")
                 continue
             files[ftype].append(str(p))
             if ftype != FileType.VIDEO:

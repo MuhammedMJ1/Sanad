@@ -1616,8 +1616,10 @@ def test_detect_surfaces_unreadable_dir_instead_of_silent_skip(tmp_path, capsys)
     yield a silently partial graph. detect() now records it in walk_errors and
     warns, while still enumerating the rest of the tree."""
     import os
+    import pytest
+    if not hasattr(os, "geteuid"):
+        pytest.skip("Windows: chmod 000 does not block scandir")
     if os.geteuid() == 0:
-        import pytest
         pytest.skip("running as root: chmod 000 does not block scandir")
     (tmp_path / "a.py").write_text("def f(): pass\n")
     locked = tmp_path / "locked"

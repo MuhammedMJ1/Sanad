@@ -362,6 +362,22 @@ def to_cypher(G: nx.Graph, output_path: str) -> None:
 generate_html = to_html
 
 
+def _stem_byte_limit(out_dir: "Path | str", default: int = 200) -> int:
+    """Shrink the default stem cap when the destination directory would push the
+    full path past Windows' 260-char MAX_PATH (long paths are opt-in there, so
+    a 200-byte name inside a deep temp dir fails with FileNotFoundError).
+    Reserves the separator, the ".md" extension, and headroom for the
+    "_COMMUNITY_" prefix / dedup suffixes. No-op on non-Windows."""
+    if sys.platform != "win32":
+        return default
+    try:
+        base_len = len(str(Path(out_dir).resolve()))
+    except OSError:
+        return default
+    budget = 259 - base_len - 1 - 3 - 16
+    return max(24, min(default, budget))
+
+
 def _cap_filename(s: str, limit: int = 200) -> str:
     """Cap a filename stem to ``limit`` UTF-8 bytes so it stays under the 255-byte
     filesystem limit even after the ``.md`` extension and dedup suffix are added
@@ -458,8 +474,9 @@ def to_obsidian(
         # emit a "@.md"-style filename. (#1409)
         if not re.search(r"\w", cleaned, flags=re.UNICODE):
             return "unnamed"
-        return _cap_filename(cleaned)
+        return _cap_filename(cleaned, _stem_limit)
 
+    _stem_limit = _stem_byte_limit(out)
     node_filename = _dedup_node_filenames(G, safe_name)
 
     # Helper: compute dominant confidence for a node across all its edges
@@ -736,7 +753,9 @@ def to_canvas(
         # emit a "@.md"-style filename. (#1409)
         if not re.search(r"\w", cleaned, flags=re.UNICODE):
             return "unnamed"
-        return _cap_filename(cleaned)
+        return _cap_filename(cleaned, _stem_limit)
+
+    _stem_limit = _stem_byte_limit(Path(output_path).parent)
 
     # Build node_filenames if not provided (same dedup logic as to_obsidian)
     if node_filenames is None:

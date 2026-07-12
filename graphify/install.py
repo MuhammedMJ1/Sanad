@@ -23,7 +23,11 @@ from pathlib import Path
 try:
     from importlib.metadata import version as _pkg_version
 
-    __version__ = _pkg_version("graphifyy")
+    try:
+        __version__ = _pkg_version("sanad")
+    except Exception:
+        # Pre-rename installs carry the old distribution metadata.
+        __version__ = _pkg_version("graphifyy")
 except Exception:
     __version__ = "unknown"
 
@@ -51,7 +55,7 @@ def _always_on(basename: str) -> str:
         # only by an install/integration path that actually needs this block.
         raise RuntimeError(
             f"graphify install is incomplete: missing always-on block '{basename}' "
-            f"at {path}. Reinstall graphifyy (e.g. `uv tool install --reinstall graphifyy`)."
+            f"at {path}. Reinstall sanad (e.g. `uv tool install --reinstall sanad`)."
         ) from exc
 def _refresh_all_version_stamps() -> None:
     """After a successful install, update .graphify_version in all other known skill dirs.
@@ -928,7 +932,7 @@ def _antigravity_install(project_dir: Path) -> None:
     print('  "graphify": {')
     print('    "command": "uv",')
     print(
-        '    "args": ["run", "--with", "graphifyy", "--with", "mcp", "-m", "graphify.serve", "${workspace.path}/graphify-out/graph.json"]'
+        '    "args": ["run", "--with", "sanad", "--with", "mcp", "-m", "graphify.serve", "${workspace.path}/graphify-out/graph.json"]'
     )
     print("  }")
 def _antigravity_uninstall(project_dir: Path, *, project: bool = False) -> None:
@@ -1698,7 +1702,7 @@ def uninstall_all(project_dir: Path | None = None, purge: bool = False) -> None:
         else:
             print(f"\n  {_GRAPHIFY_OUT}/  ->  not found (nothing to purge)")
 
-    print("\nDone. Run 'pip uninstall graphifyy' to remove the package itself.")
+    print("\nDone. Run 'pip uninstall sanad' to remove the package itself.")
 def claude_uninstall(project_dir: Path | None = None, *, project: bool = False) -> None:
     """Remove the graphify skill tree (SKILL.md + references/) and the graphify
     section from CLAUDE.md and its local-only variants, plus the PreToolUse hook.

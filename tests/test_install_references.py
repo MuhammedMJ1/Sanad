@@ -302,9 +302,13 @@ def test_gemini_install_references_all_resolve(tmp_path):
     separate path, so this locks the body<->refs coupling: a real install with the
     real claude bundle must leave no dead pointer on disk.
     """
+    import platform as _platform
     import re
     _install(tmp_path, "gemini")
-    skill = tmp_path / ".gemini" / "skills" / "graphify" / "SKILL.md"
+    # User-scope gemini lands in ~/.agents on Windows, ~/.gemini elsewhere
+    # (mirrors _platform_skill_destination).
+    dotdir = ".agents" if _platform.system() == "Windows" else ".gemini"
+    skill = tmp_path / dotdir / "skills" / "graphify" / "SKILL.md"
     assert skill.exists()
     refdir = skill.parent / "references"
     assert refdir.is_dir()

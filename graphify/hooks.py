@@ -344,9 +344,19 @@ echo "[graphify] Branch switched - launching background rebuild (log: $_GRAPHIFY
 
 
 def _git_root(path: Path) -> Path | None:
-    """Walk up to find .git directory."""
+    """Walk up to find .git directory.
+
+    The home directory is a hard ceiling and is never itself returned: a
+    dotfiles repo at ~ must not silently receive hooks meant for a project
+    (or temp dir) nested somewhere under it.
+    """
     current = path.resolve()
+    # String compare (not Path.home()) so no new Path is instantiated here:
+    # tests monkeypatch os.name, and Path() dispatches its flavour on it.
+    home = os.path.normcase(os.path.abspath(os.path.expanduser("~")))
     for parent in [current, *current.parents]:
+        if os.path.normcase(str(parent)) == home:
+            return None
         if (parent / ".git").exists():
             return parent
     return None
