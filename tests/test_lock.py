@@ -67,6 +67,22 @@ def test_ranked_symbols_orders_by_degree(space):
     assert set(ranked) == {"login", "validate_token", "Session"}
 
 
+def test_dep_specs_fallback_regex_matches_tomllib_path():
+    """The 3.10 fallback (no tomllib) must extract the same dep names."""
+    from graphify.lock import _dep_specs_fallback
+    text = (
+        '[project]\nname="x"\nversion="0"\n'
+        'dependencies=[\n  "requests>=2",\n  "python-dotenv",\n]\n'
+        '[project.optional-dependencies]\n'
+        'pdf=["pypdf>=6"]\nvideo=["yt-dlp"]\n'
+        '[tool.other]\nignored=["not-a-dep"]\n'
+    )
+    specs = _dep_specs_fallback(text)
+    assert "requests>=2" in specs and "python-dotenv" in specs
+    assert "pypdf>=6" in specs and "yt-dlp" in specs
+    assert "not-a-dep" not in specs
+
+
 def test_declared_deps_from_pyproject(tmp_path):
     (tmp_path / "pyproject.toml").write_text(
         '[project]\nname="x"\nversion="0"\ndependencies=["requests>=2", "python-dotenv"]\n',

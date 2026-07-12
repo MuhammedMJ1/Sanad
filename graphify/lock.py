@@ -117,6 +117,42 @@ def build_symbol_space(G: nx.Graph, repo_root: Path | None = None) -> SymbolSpac
     return space
 
 
+def _pyproject_dep_specs(text: str) -> list[str]:
+    """Dependency spec strings from pyproject: tomllib when available
+    (3.11+), else a minimal regex fallback — Python 3.10 has no tomllib, and
+    an empty dep list there would falsely flag every dependency import."""
+    try:
+        import tomllib
+    except ImportError:
+        tomllib = None
+    if tomllib is not None:
+        try:
+            data = tomllib.loads(text)
+        except Exception:
+            data = {}
+        project = data.get("project", {}) if isinstance(data, dict) else {}
+        raw: list[str] = list(project.get("dependencies") or [])
+        for extra in (project.get("optional-dependencies") or {}).values():
+            raw.extend(extra or [])
+        return raw
+    return _dep_specs_fallback(text)
+
+
+def _dep_specs_fallback(text: str) -> list[str]:
+    """Regex extraction of [project] dependencies + every array under
+    [project.optional-dependencies]. Coarse by design: over-collecting a
+    string here only ADDS an allowed import name, never removes one."""
+    out: list[str] = []
+    m = re.search(r"^dependencies\s*=\s*\[(.*?)\]", text, re.MULTILINE | re.DOTALL)
+    if m:
+        out.extend(re.findall(r'["\']([^"\']+)["\']', m.group(1)))
+    m = re.search(r"^\[project\.optional-dependencies\](.*?)(?=^\[|\Z)",
+                  text, re.MULTILINE | re.DOTALL)
+    if m:
+        out.extend(re.findall(r'["\']([^"\']+)["\']', m.group(1)))
+    return out
+
+
 def _declared_deps(repo_root: Path) -> set[str]:
     """Top-level import names a project may legitimately use: declared
     dependencies from pyproject/requirements (normalized to import-ish form)."""
@@ -128,16 +164,8 @@ def _declared_deps(repo_root: Path) -> set[str]:
 
     pp = repo_root / "pyproject.toml"
     if pp.exists():
-        try:
-            import tomllib
-            data = tomllib.loads(pp.read_text(encoding="utf-8", errors="ignore"))
-        except Exception:
-            data = {}
-        project = data.get("project", {}) if isinstance(data, dict) else {}
-        raw: list[str] = list(project.get("dependencies") or [])
-        for extra in (project.get("optional-dependencies") or {}).values():
-            raw.extend(extra or [])
-        for spec in raw:
+        text = pp.read_text(encoding="utf-8", errors="ignore")
+        for spec in _pyproject_dep_specs(text):
             name = _pep508_name(str(spec))
             if name:
                 deps.add(name.lower().replace("-", "_"))
