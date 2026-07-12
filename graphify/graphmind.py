@@ -47,6 +47,7 @@ OPS_HELP = """ops language (one op per line):
   common <ref> -> <ref>     shared neighbors of two nodes
   source <ref>              file and line of a node
   community <ref>           the subsystem a node belongs to (top members)
+  scars <ref>               git-history scars of a node's file (danger, co-change partners)
   note <text>               save a working-memory note
   notes                     list saved notes
   answer <text>             finish with the final answer
@@ -63,8 +64,9 @@ class OpError(ValueError):
 class MindSession:
     """Execution state for one investigation over one graph."""
 
-    def __init__(self, G: nx.Graph):
+    def __init__(self, G: nx.Graph, scars: dict | None = None):
         self.G = G
+        self.scars = scars                  # optional git-history sidecar (scars.py)
         self.ref_ids: list[str] = []        # index -> node_id (ref nK = ref_ids[K-1])
         self._ref_of: dict[str, int] = {}   # node_id -> index
         self.notes: list[str] = []
@@ -246,6 +248,16 @@ class MindSession:
             lines.append(f"  {self._fmt(n)}")
         return "\n".join(lines)
 
+    def _op_scars(self, arg: str) -> str:
+        nid = self._resolve(arg)
+        if not self.scars:
+            return "no scar data loaded — run `sanad scars` in the repo first"
+        src = str(self.G.nodes[nid].get("source_file") or "")
+        if not src:
+            return f"{self._fmt(nid)}: node has no source file to look up"
+        from graphify.scars import render_file_report
+        return render_file_report(self.scars, src)
+
     def _op_note(self, arg: str) -> str:
         if not arg.strip():
             raise OpError("usage: note <text>")
@@ -269,6 +281,7 @@ class MindSession:
         "common": _op_common,
         "source": _op_source,
         "community": _op_community,
+        "scars": _op_scars,
         "note": _op_note,
         "notes": _op_notes,
     }
@@ -314,8 +327,8 @@ class MindSession:
         }
 
     @classmethod
-    def from_state(cls, G: nx.Graph, state: dict) -> "MindSession":
-        s = cls(G)
+    def from_state(cls, G: nx.Graph, state: dict, scars: dict | None = None) -> "MindSession":
+        s = cls(G, scars)
         # Drop refs whose nodes vanished from a rebuilt graph; remaining refs
         # keep their ORIGINAL indices (a stale n7 must not silently become n5).
         for i, nid in enumerate(state.get("ref_ids", [])):
@@ -338,15 +351,15 @@ def save_session(out_dir: Path, session: MindSession) -> Path:
     return p
 
 
-def load_session(out_dir: Path, G: nx.Graph) -> MindSession:
+def load_session(out_dir: Path, G: nx.Graph, scars: dict | None = None) -> MindSession:
     p = out_dir / SESSION_FILENAME
     if not p.exists():
-        return MindSession(G)
+        return MindSession(G, scars)
     try:
         state = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return MindSession(G)
-    return MindSession.from_state(G, state)
+        return MindSession(G, scars)
+    return MindSession.from_state(G, state, scars)
 
 
 # ── autonomous think loop (`graphify think`) ─────────────────────────────────
@@ -392,6 +405,7 @@ def think(
     usage_out: dict | None = None,
     on_step=None,
     perspective: str = "",
+    scars: dict | None = None,
 ) -> tuple[str | None, list[tuple[str, str]]]:
     """Run the graph-ops reasoning loop until `answer` or op budget exhaustion.
 
@@ -404,7 +418,7 @@ def think(
     """
     from graphify.llm import _call_llm
 
-    session = MindSession(G)
+    session = MindSession(G, scars)
     system = THINK_SYSTEM.format(ops_help=OPS_HELP, budget=budget)
     if perspective:
         system = f"{system}\n\nYour assigned perspective:\n{perspective}"

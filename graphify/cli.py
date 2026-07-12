@@ -697,6 +697,70 @@ def dispatch_command(cmd: str) -> None:
             nodes_returned=hops,
         )
 
+    elif cmd == "scars":
+        # Scar tissue: mine git history into per-file danger scores and
+        # co-change couples (pure git, local, no LLM). Saved as a sidecar so
+        # predict/check-impact/ops can warn before an edit goes wrong the same
+        # way it historically did.
+        from graphify.scars import (
+            mine_scars, render_file_report, render_summary, save_scars,
+        )
+
+        scan_root = "."
+        file_query: str | None = None
+        min_support = None
+        min_confidence = None
+        json_out = False
+        args = sys.argv[2:]
+        i = 0
+        while i < len(args):
+            a = args[i]
+            if a == "--file" and i + 1 < len(args):
+                file_query = args[i + 1]
+                i += 2
+            elif a == "--min-support" and i + 1 < len(args):
+                try:
+                    min_support = int(args[i + 1])
+                except ValueError:
+                    print(f"error: --min-support must be an integer, got {args[i + 1]!r}", file=sys.stderr)
+                    sys.exit(1)
+                i += 2
+            elif a == "--min-confidence" and i + 1 < len(args):
+                try:
+                    min_confidence = float(args[i + 1])
+                except ValueError:
+                    print(f"error: --min-confidence must be a number, got {args[i + 1]!r}", file=sys.stderr)
+                    sys.exit(1)
+                i += 2
+            elif a == "--json":
+                json_out = True
+                i += 1
+            elif not a.startswith("--"):
+                scan_root = a
+                i += 1
+            else:
+                print(f"error: unknown scars option {a!r}", file=sys.stderr)
+                sys.exit(1)
+        root = Path(scan_root).resolve()
+        if not root.is_dir():
+            print(f"error: not a directory: {root}", file=sys.stderr)
+            sys.exit(1)
+        kwargs = {}
+        if min_support is not None:
+            kwargs["min_support"] = min_support
+        if min_confidence is not None:
+            kwargs["min_confidence"] = min_confidence
+        data = mine_scars(root, **kwargs)
+        out_dir = root / "graphify-out"
+        save_scars(out_dir, data)
+        if json_out:
+            print(json.dumps(data, ensure_ascii=False, indent=2))
+        elif file_query:
+            print(render_file_report(data, file_query))
+        else:
+            print(render_summary(data))
+            print(f"\nscar sidecar saved to {out_dir}. predict/check-impact/ops now use it.")
+
     elif cmd == "ops":
         # Graph-ops engine, agent-driven: execute thinking ops directly against
         # graph.json. Session state (refs, notes) persists in graphify-out/ so
@@ -704,6 +768,7 @@ def dispatch_command(cmd: str) -> None:
         # short n<K> refs — no API key, no LLM, deterministic.
         from graphify.affected import load_graph as _load_mind_graph
         from graphify.graphmind import OPS_HELP, load_session, save_session
+        from graphify.scars import load_scars as _load_scars
 
         graph_path = _default_graph_path()
         fresh = False
@@ -730,11 +795,12 @@ def dispatch_command(cmd: str) -> None:
             sys.exit(1)
         _enforce_graph_size_cap_or_exit(gp)
         G = _load_mind_graph(gp)
+        _scars = _load_scars(gp.parent)
         if fresh:
             from graphify.graphmind import MindSession
-            session = MindSession(G)
+            session = MindSession(G, _scars)
         else:
-            session = load_session(gp.parent, G)
+            session = load_session(gp.parent, G, _scars)
         # Ops come from the command line (one op) or stdin (one per line).
         op_lines = [" ".join(op_parts)] if op_parts else [
             ln for ln in sys.stdin.read().splitlines() if ln.strip()
@@ -818,11 +884,13 @@ def dispatch_command(cmd: str) -> None:
             )
             sys.exit(1)
         G = _load_mind_graph(gp)
+        from graphify.scars import load_scars as _load_scars_think
         usage: dict = {}
         answer, trace = _think(
             G, question, backend=backend, model=model_arg, budget=budget,
             usage_out=usage,
             on_step=lambda op, result: print(f"> {op}\n{result}\n"),
+            scars=_load_scars_think(gp.parent),
         )
         if answer is None:
             print("[!] op budget exhausted before an answer was reached.", file=sys.stderr)
@@ -1001,10 +1069,20 @@ def dispatch_command(cmd: str) -> None:
             print(f"error: {e}", file=sys.stderr)
             sys.exit(1)
         write_contract(gp.parent, contract, gp)
+        # Scar tissue overlay: warn when a target's own history is burn-prone
+        # or a historical co-change partner is missing from the edit plan.
+        from graphify.scars import load_scars as _load_scars_p, warnings_for_edit as _scar_warns
+        _scar_data = _load_scars_p(gp.parent)
+        _warns = []
+        if _scar_data:
+            _target_files = [t.get("source_file") for t in contract.get("targets", []) if t.get("source_file")]
+            _warns = _scar_warns(_scar_data, _target_files)
         if json_out:
-            print(json.dumps(contract, indent=2, ensure_ascii=False))
+            print(json.dumps({**contract, "scar_warnings": _warns}, indent=2, ensure_ascii=False))
         else:
             print(render_prediction(contract))
+            for w in _warns:
+                print(w)
 
     elif cmd == "check-impact":
         # Edit blast-radius oracle, step 2 (after editing + `graphify update .`):
@@ -1050,10 +1128,17 @@ def dispatch_command(cmd: str) -> None:
             print(f"error: {e}", file=sys.stderr)
             sys.exit(1)
         report = _check_impact(contract, baseline, _load_impact_graph(gp))
+        # Scar tissue overlay: even a CLEAN edit can be half-done — flag any
+        # changed file whose historical co-change partner did NOT change.
+        from graphify.scars import load_scars as _load_scars_c, warnings_for_edit as _scar_warns_c
+        _scar_data = _load_scars_c(gp.parent)
+        _warns = _scar_warns_c(_scar_data, report.get("changed_files", [])) if _scar_data else []
         if json_out:
-            print(json.dumps(report, indent=2, ensure_ascii=False))
+            print(json.dumps({**report, "scar_warnings": _warns}, indent=2, ensure_ascii=False))
         else:
             print(render_check(report))
+            for w in _warns:
+                print(w)
         if strict and report["verdict"] == _DEVIATION:
             sys.exit(3)
 

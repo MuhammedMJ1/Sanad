@@ -103,6 +103,28 @@ def test_community_lists_membership():
     assert "domain" in out
 
 
+def test_scars_op_reports_file_history():
+    scars = {
+        "version": 1,
+        "files": {
+            "src/service.py": {
+                "path": "src/service.py", "edits": 10, "fix_edits": 4,
+                "revert_edits": 1, "danger": 0.6,
+                "couples": [{"path": "src/db.py", "support": 5, "confidence": 0.5}],
+            }
+        },
+    }
+    s = MindSession(_graph(), scars)
+    out = s.execute('scars "fetch_user()"')
+    assert "danger 0.6" in out and "src/db.py" in out
+
+
+def test_scars_op_without_data_explains_how_to_get_it():
+    s = MindSession(_graph())
+    out = s.execute('scars "fetch_user()"')
+    assert "sanad scars" in out
+
+
 def test_note_and_notes_roundtrip():
     s = MindSession(_graph())
     s.execute("note fetch_user is the domain seam")
