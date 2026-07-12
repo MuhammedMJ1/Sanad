@@ -697,6 +697,104 @@ def dispatch_command(cmd: str) -> None:
             nodes_returned=hops,
         )
 
+    elif cmd == "tunnel":
+        # Wind tunnel: slice the minimal import closure for the targets out of
+        # the graph, copy it into a scratch sandbox, then REALLY import it and
+        # REALLY run the graph-selected tests — optionally with a draft laid
+        # over one file. Exit 6 when reality says no.
+        from graphify.affected import load_graph as _load_tunnel_graph
+        from graphify.windtunnel import render_report as _render_tunnel, wind_tunnel
+
+        graph_path = _default_graph_path()
+        depth = 2
+        timeout = 120
+        with_tests = True
+        keep = False
+        json_out = False
+        draft_file: str | None = None
+        draft_at: str | None = None
+        targets: list[str] = []
+        args = sys.argv[2:]
+        i = 0
+        while i < len(args):
+            a = args[i]
+            if a == "--graph" and i + 1 < len(args):
+                graph_path = args[i + 1]
+                i += 2
+            elif a == "--depth" and i + 1 < len(args):
+                try:
+                    depth = max(0, int(args[i + 1]))
+                except ValueError:
+                    print(f"error: --depth must be an integer, got {args[i + 1]!r}", file=sys.stderr)
+                    sys.exit(1)
+                i += 2
+            elif a == "--timeout" and i + 1 < len(args):
+                try:
+                    timeout = max(5, int(args[i + 1]))
+                except ValueError:
+                    print(f"error: --timeout must be an integer, got {args[i + 1]!r}", file=sys.stderr)
+                    sys.exit(1)
+                i += 2
+            elif a == "--draft" and i + 1 < len(args):
+                draft_file = args[i + 1]
+                i += 2
+            elif a == "--at" and i + 1 < len(args):
+                draft_at = args[i + 1]
+                i += 2
+            elif a == "--no-tests":
+                with_tests = False
+                i += 1
+            elif a == "--keep":
+                keep = True
+                i += 1
+            elif a == "--json":
+                json_out = True
+                i += 1
+            elif not a.startswith("--"):
+                targets.append(a)
+                i += 1
+            else:
+                print(f"error: unknown tunnel option {a!r}", file=sys.stderr)
+                sys.exit(1)
+        if not targets:
+            print(
+                'Usage: graphify tunnel "<file-or-symbol>" [more targets...]\n'
+                "                [--draft code.py --at rel/path.py] [--depth N]\n"
+                "                [--no-tests] [--timeout S] [--keep] [--json]",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        if (draft_file is None) != (draft_at is None):
+            print("error: --draft and --at must be used together", file=sys.stderr)
+            sys.exit(1)
+        draft_code: str | None = None
+        if draft_file is not None:
+            df = Path(draft_file)
+            if not df.exists():
+                print(f"error: draft file not found: {df}", file=sys.stderr)
+                sys.exit(1)
+            draft_code = df.read_text(encoding="utf-8", errors="replace")
+        gp = Path(graph_path).resolve()
+        if not gp.exists():
+            print(f"error: graph file not found: {gp}", file=sys.stderr)
+            sys.exit(1)
+        _enforce_graph_size_cap_or_exit(gp)
+        try:
+            report = wind_tunnel(
+                _load_tunnel_graph(gp), gp.parent.parent, targets,
+                draft_code=draft_code, draft_at=draft_at, depth=depth,
+                with_tests=with_tests, timeout=timeout, keep=keep,
+            )
+        except ValueError as e:
+            print(f"error: {e}", file=sys.stderr)
+            sys.exit(1)
+        if json_out:
+            print(json.dumps(report, indent=2, ensure_ascii=False))
+        else:
+            print(_render_tunnel(report))
+        if not report["ok"]:
+            sys.exit(6)
+
     elif cmd in ("lock-check", "lock-grammar", "lock-gen"):
         # The genetic lock: the graph's symbol space judges (or constrains)
         # generated code so calls to nonexistent APIs cannot ship.
