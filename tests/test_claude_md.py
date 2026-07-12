@@ -4,6 +4,15 @@ import pytest
 from graphify.__main__ import claude_install, claude_uninstall, _CLAUDE_MD_MARKER, _CLAUDE_MD_SECTION
 
 
+@pytest.fixture(autouse=True)
+def _isolate_home(tmp_path_factory, monkeypatch):
+    """claude_uninstall removes the USER-scope skill tree via Path.home() no
+    matter which project_dir it gets, so without this every full-suite run
+    silently deleted the developer's real installed ~/.claude skill."""
+    fake_home = tmp_path_factory.mktemp("home")
+    monkeypatch.setattr(Path, "home", lambda: fake_home)
+
+
 # ---------------------------------------------------------------------------
 # install
 # ---------------------------------------------------------------------------
