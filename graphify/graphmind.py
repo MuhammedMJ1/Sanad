@@ -48,6 +48,7 @@ OPS_HELP = """ops language (one op per line):
   source <ref>              file and line of a node
   community <ref>           the subsystem a node belongs to (top members)
   scars <ref>               git-history scars of a node's file (danger, co-change partners)
+  memory <query>            recall verified insights stored about matching nodes
   note <text>               save a working-memory note
   notes                     list saved notes
   answer <text>             finish with the final answer
@@ -64,9 +65,11 @@ class OpError(ValueError):
 class MindSession:
     """Execution state for one investigation over one graph."""
 
-    def __init__(self, G: nx.Graph, scars: dict | None = None):
+    def __init__(self, G: nx.Graph, scars: dict | None = None,
+                 memory_data: dict | None = None):
         self.G = G
         self.scars = scars                  # optional git-history sidecar (scars.py)
+        self.memory_data = memory_data      # optional sterile-memory sidecar (memory.py)
         self.ref_ids: list[str] = []        # index -> node_id (ref nK = ref_ids[K-1])
         self._ref_of: dict[str, int] = {}   # node_id -> index
         self.notes: list[str] = []
@@ -258,6 +261,17 @@ class MindSession:
         from graphify.scars import render_file_report
         return render_file_report(self.scars, src)
 
+    def _op_memory(self, arg: str) -> str:
+        if not arg.strip():
+            raise OpError("usage: memory <query>")
+        if not self.memory_data:
+            return "no memories stored yet — verified insights land here via `sanad memory add` or `sanad think --remember`"
+        from graphify.memory import recall, render_entry
+        hits = recall(self.memory_data, arg)
+        if not hits:
+            return f"no memories matching {arg!r}"
+        return "\n".join(render_entry(e) for e in hits)
+
     def _op_note(self, arg: str) -> str:
         if not arg.strip():
             raise OpError("usage: note <text>")
@@ -282,6 +296,7 @@ class MindSession:
         "source": _op_source,
         "community": _op_community,
         "scars": _op_scars,
+        "memory": _op_memory,
         "note": _op_note,
         "notes": _op_notes,
     }
@@ -327,8 +342,9 @@ class MindSession:
         }
 
     @classmethod
-    def from_state(cls, G: nx.Graph, state: dict, scars: dict | None = None) -> "MindSession":
-        s = cls(G, scars)
+    def from_state(cls, G: nx.Graph, state: dict, scars: dict | None = None,
+                   memory_data: dict | None = None) -> "MindSession":
+        s = cls(G, scars, memory_data)
         # Drop refs whose nodes vanished from a rebuilt graph; remaining refs
         # keep their ORIGINAL indices (a stale n7 must not silently become n5).
         for i, nid in enumerate(state.get("ref_ids", [])):
@@ -351,15 +367,16 @@ def save_session(out_dir: Path, session: MindSession) -> Path:
     return p
 
 
-def load_session(out_dir: Path, G: nx.Graph, scars: dict | None = None) -> MindSession:
+def load_session(out_dir: Path, G: nx.Graph, scars: dict | None = None,
+                 memory_data: dict | None = None) -> MindSession:
     p = out_dir / SESSION_FILENAME
     if not p.exists():
-        return MindSession(G, scars)
+        return MindSession(G, scars, memory_data)
     try:
         state = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return MindSession(G, scars)
-    return MindSession.from_state(G, state, scars)
+        return MindSession(G, scars, memory_data)
+    return MindSession.from_state(G, state, scars, memory_data)
 
 
 # ── autonomous think loop (`graphify think`) ─────────────────────────────────
@@ -406,6 +423,7 @@ def think(
     on_step=None,
     perspective: str = "",
     scars: dict | None = None,
+    memory_data: dict | None = None,
 ) -> tuple[str | None, list[tuple[str, str]]]:
     """Run the graph-ops reasoning loop until `answer` or op budget exhaustion.
 
@@ -418,7 +436,7 @@ def think(
     """
     from graphify.llm import _call_llm
 
-    session = MindSession(G, scars)
+    session = MindSession(G, scars, memory_data)
     system = THINK_SYSTEM.format(ops_help=OPS_HELP, budget=budget)
     if perspective:
         system = f"{system}\n\nYour assigned perspective:\n{perspective}"

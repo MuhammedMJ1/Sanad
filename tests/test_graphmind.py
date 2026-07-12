@@ -119,6 +119,27 @@ def test_scars_op_reports_file_history():
     assert "danger 0.6" in out and "src/db.py" in out
 
 
+def test_memory_op_recalls_verified_insights():
+    mem = {
+        "version": 1, "next_id": 2,
+        "entries": [{
+            "id": "m1", "insight": "fetch_user() is the domain seam.",
+            "status": "active", "source": "think", "confirmations": 2,
+            "stale_reason": "", "anchors": ["fetch_user()", "service.py"],
+            "claims": [],
+        }],
+    }
+    s = MindSession(_graph(), None, mem)
+    out = s.execute("memory fetch_user")
+    assert "m1" in out and "domain seam" in out
+
+
+def test_memory_op_without_store_explains_how():
+    s = MindSession(_graph())
+    out = s.execute("memory fetch_user")
+    assert "sanad memory add" in out or "no memories" in out
+
+
 def test_scars_op_without_data_explains_how_to_get_it():
     s = MindSession(_graph())
     out = s.execute('scars "fetch_user()"')

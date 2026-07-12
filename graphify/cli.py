@@ -697,6 +697,107 @@ def dispatch_command(cmd: str) -> None:
             nodes_returned=hops,
         )
 
+    elif cmd == "memory":
+        # Sterile memory: insights enter permanent storage ONLY through the
+        # hallucination gate, and `reverify` re-judges the whole store against
+        # the current graph (quarantining what stopped being true).
+        from graphify.affected import load_graph as _load_mem_graph
+        from graphify.memory import (
+            ADMITTED, admit, forget, load_memory, recall, render_admission,
+            render_entry, render_reverify, reverify, save_memory,
+        )
+
+        graph_path = _default_graph_path()
+        include_stale = False
+        sub = ""
+        rest: list[str] = []
+        args = sys.argv[2:]
+        i = 0
+        while i < len(args):
+            a = args[i]
+            if a == "--graph" and i + 1 < len(args):
+                graph_path = args[i + 1]
+                i += 2
+            elif a == "--all":
+                include_stale = True
+                i += 1
+            elif not a.startswith("--"):
+                if not sub:
+                    sub = a.lower()
+                else:
+                    rest.append(a)
+                i += 1
+            else:
+                print(f"error: unknown memory option {a!r}", file=sys.stderr)
+                sys.exit(1)
+        if sub not in ("add", "list", "show", "recall", "reverify", "forget"):
+            print(
+                "Usage: graphify memory add \"<insight>\" | list [--all] | show <id>\n"
+                "                | recall \"<query>\" | reverify | forget <id>",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        gp = Path(graph_path).resolve()
+        if not gp.exists():
+            print(f"error: graph file not found: {gp}", file=sys.stderr)
+            sys.exit(1)
+        _enforce_graph_size_cap_or_exit(gp)
+        mem = load_memory(gp.parent)
+
+        if sub == "add":
+            insight = " ".join(rest).strip()
+            if not insight:
+                print('Usage: graphify memory add "<insight>"', file=sys.stderr)
+                sys.exit(1)
+            G = _load_mem_graph(gp)
+            status, entry, verdicts = admit(G, mem, insight, source="manual")
+            print(render_admission(status, entry, verdicts))
+            if status == ADMITTED:
+                save_memory(gp.parent, mem)
+            else:
+                sys.exit(7)
+        elif sub == "list":
+            entries = [e for e in mem.get("entries", [])
+                       if include_stale or e.get("status") == "active"]
+            if not entries:
+                print("memory is empty" + ("" if include_stale else " (try --all to include stale)"))
+            for e in entries:
+                print(render_entry(e))
+        elif sub == "show":
+            if not rest:
+                print("Usage: graphify memory show <id>", file=sys.stderr)
+                sys.exit(1)
+            e = next((x for x in mem.get("entries", []) if x.get("id") == rest[0]), None)
+            if e is None:
+                print(f"no memory entry {rest[0]!r}", file=sys.stderr)
+                sys.exit(1)
+            print(render_entry(e, full=True))
+        elif sub == "recall":
+            query = " ".join(rest).strip()
+            if not query:
+                print('Usage: graphify memory recall "<query>"', file=sys.stderr)
+                sys.exit(1)
+            hits = recall(mem, query, include_stale=include_stale)
+            if not hits:
+                print("no matching memories")
+            for e in hits:
+                print(render_entry(e))
+        elif sub == "reverify":
+            G = _load_mem_graph(gp)
+            report = reverify(G, mem)
+            save_memory(gp.parent, mem)
+            print(render_reverify(report))
+        elif sub == "forget":
+            if not rest:
+                print("Usage: graphify memory forget <id>", file=sys.stderr)
+                sys.exit(1)
+            if forget(mem, rest[0]):
+                save_memory(gp.parent, mem)
+                print(f"forgot {rest[0]}")
+            else:
+                print(f"no memory entry {rest[0]!r}", file=sys.stderr)
+                sys.exit(1)
+
     elif cmd == "tunnel":
         # Wind tunnel: slice the minimal import closure for the targets out of
         # the graph, copy it into a scratch sandbox, then REALLY import it and
@@ -1016,11 +1117,13 @@ def dispatch_command(cmd: str) -> None:
         _enforce_graph_size_cap_or_exit(gp)
         G = _load_mind_graph(gp)
         _scars = _load_scars(gp.parent)
+        from graphify.memory import load_memory as _load_mem_ops
+        _mem = _load_mem_ops(gp.parent)
         if fresh:
             from graphify.graphmind import MindSession
-            session = MindSession(G, _scars)
+            session = MindSession(G, _scars, _mem)
         else:
-            session = load_session(gp.parent, G, _scars)
+            session = load_session(gp.parent, G, _scars, _mem)
         # Ops come from the command line (one op) or stdin (one per line).
         op_lines = [" ".join(op_parts)] if op_parts else [
             ln for ln in sys.stdin.read().splitlines() if ln.strip()
@@ -1051,6 +1154,7 @@ def dispatch_command(cmd: str) -> None:
         model_arg: str | None = None
         budget = 15
         do_verify = False
+        do_remember = False
         question_parts: list[str] = []
         args = sys.argv[2:]
         i = 0
@@ -1074,6 +1178,10 @@ def dispatch_command(cmd: str) -> None:
                 i += 2
             elif a == "--verify":
                 do_verify = True
+                i += 1
+            elif a == "--remember":
+                do_verify = True   # remembering REQUIRES the gate
+                do_remember = True
                 i += 1
             elif not a.startswith("--"):
                 question_parts.append(a)
@@ -1105,12 +1213,14 @@ def dispatch_command(cmd: str) -> None:
             sys.exit(1)
         G = _load_mind_graph(gp)
         from graphify.scars import load_scars as _load_scars_think
+        from graphify.memory import load_memory as _load_mem_think
         usage: dict = {}
         answer, trace = _think(
             G, question, backend=backend, model=model_arg, budget=budget,
             usage_out=usage,
             on_step=lambda op, result: print(f"> {op}\n{result}\n"),
             scars=_load_scars_think(gp.parent),
+            memory_data=_load_mem_think(gp.parent),
         )
         if answer is None:
             print("[!] op budget exhausted before an answer was reached.", file=sys.stderr)
@@ -1131,6 +1241,22 @@ def dispatch_command(cmd: str) -> None:
                     sys.exit(2)
             else:
                 print("\n-- hallucination gate: no checkable claims in the answer --")
+            if do_remember:
+                # Compounding loop: a gate-clean investigation becomes
+                # permanent, provably-true knowledge (admission re-runs the
+                # sterile rule — UNKNOWN claims also block entry).
+                from graphify.memory import (
+                    admit as _mem_admit, load_memory as _mem_load,
+                    render_admission as _mem_render, save_memory as _mem_save,
+                )
+                _mem = _mem_load(gp.parent)
+                _status, _entry, _mverdicts = _mem_admit(
+                    G, _mem, answer, source="think", question=question,
+                )
+                print("\n-- sterile memory --")
+                print(_mem_render(_status, _entry, _mverdicts))
+                if _entry is not None:
+                    _mem_save(gp.parent, _mem)
 
     elif cmd == "council":
         # Lens debate council: several voices of the SAME model each run a
