@@ -697,6 +697,128 @@ def dispatch_command(cmd: str) -> None:
             nodes_returned=hops,
         )
 
+    elif cmd in ("lock-check", "lock-grammar", "lock-gen"):
+        # The genetic lock: the graph's symbol space judges (or constrains)
+        # generated code so calls to nonexistent APIs cannot ship.
+        from graphify.affected import load_graph as _load_lock_graph
+        from graphify.lock import (
+            api_hints_for_task, build_symbol_space, check_python,
+            emit_enum_schema, emit_gbnf, locked_generate, render_check_report,
+        )
+
+        graph_path = _default_graph_path()
+        fmt = "gbnf"
+        out_path: str | None = None
+        rounds = 3
+        backend_arg: str | None = None
+        model_arg: str | None = None
+        positionals: list[str] = []
+        args = sys.argv[2:]
+        i = 0
+        while i < len(args):
+            a = args[i]
+            if a == "--graph" and i + 1 < len(args):
+                graph_path = args[i + 1]
+                i += 2
+            elif a == "--format" and i + 1 < len(args):
+                fmt = args[i + 1].lower()
+                i += 2
+            elif a == "--out" and i + 1 < len(args):
+                out_path = args[i + 1]
+                i += 2
+            elif a == "--rounds" and i + 1 < len(args):
+                try:
+                    rounds = max(1, int(args[i + 1]))
+                except ValueError:
+                    print(f"error: --rounds must be an integer, got {args[i + 1]!r}", file=sys.stderr)
+                    sys.exit(1)
+                i += 2
+            elif a == "--backend" and i + 1 < len(args):
+                backend_arg = args[i + 1]
+                i += 2
+            elif a == "--model" and i + 1 < len(args):
+                model_arg = args[i + 1]
+                i += 2
+            elif not a.startswith("--"):
+                positionals.append(a)
+                i += 1
+            else:
+                print(f"error: unknown {cmd} option {a!r}", file=sys.stderr)
+                sys.exit(1)
+        gp = Path(graph_path).resolve()
+        if not gp.exists():
+            print(f"error: graph file not found: {gp}", file=sys.stderr)
+            sys.exit(1)
+        _enforce_graph_size_cap_or_exit(gp)
+        # repo root for declared deps = the directory holding graphify-out/
+        _lock_G = _load_lock_graph(gp)
+        space = build_symbol_space(_lock_G, gp.parent.parent)
+
+        if cmd == "lock-check":
+            if positionals:
+                src = Path(positionals[0])
+                if not src.exists():
+                    print(f"error: file not found: {src}", file=sys.stderr)
+                    sys.exit(1)
+                code = src.read_text(encoding="utf-8", errors="replace")
+            else:
+                code = sys.stdin.read()
+            if not code.strip():
+                print("Usage: graphify lock-check <file.py>  (or pipe code via stdin)", file=sys.stderr)
+                sys.exit(1)
+            violations = check_python(code, space)
+            print(render_check_report(violations))
+            if violations:
+                sys.exit(5)
+
+        elif cmd == "lock-grammar":
+            if fmt == "gbnf":
+                artifact = emit_gbnf(space)
+            elif fmt in ("schema", "json"):
+                artifact = json.dumps(emit_enum_schema(space), indent=2)
+            else:
+                print(f"error: --format must be gbnf or schema, got {fmt!r}", file=sys.stderr)
+                sys.exit(1)
+            if out_path:
+                Path(out_path).write_text(artifact, encoding="utf-8")
+                print(f"lock grammar ({fmt}) written to {out_path} "
+                      f"[{len(space.ranked_symbols())} symbols]")
+            else:
+                print(artifact)
+
+        else:  # lock-gen
+            task = " ".join(positionals).strip()
+            if not task:
+                print('Usage: graphify lock-gen "<task>" [--rounds N] [--backend B] [--model M]',
+                      file=sys.stderr)
+                sys.exit(1)
+            from graphify.llm import detect_backend, estimate_cost
+            backend = backend_arg or detect_backend()
+            if not backend:
+                print("error: no LLM backend configured. Set GEMINI_API_KEY (or another "
+                      "provider key), or pass --backend.", file=sys.stderr)
+                sys.exit(1)
+            usage: dict = {}
+
+            def _on_round(r, code, violations):
+                status = "clean" if not violations else f"{len(violations)} violation(s)"
+                print(f"[lock] round {r}: {status}", file=sys.stderr)
+
+            code, violations, used = locked_generate(
+                task, space, backend=backend, model=model_arg,
+                rounds=rounds, usage_out=usage, on_round=_on_round,
+                api_hints=api_hints_for_task(_lock_G, task),
+            )
+            print(code)
+            print()
+            print(render_check_report(violations))
+            tin, tout = usage.get("input", 0), usage.get("output", 0)
+            if tin or tout:
+                print(f"[tokens: {tin} in / {tout} out across {used} round(s), "
+                      f"est. cost (~{backend}): ${estimate_cost(backend, tin, tout):.4f}]")
+            if violations:
+                sys.exit(5)
+
     elif cmd == "scars":
         # Scar tissue: mine git history into per-file danger scores and
         # co-change couples (pure git, local, no LLM). Saved as a sidecar so
