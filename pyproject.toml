@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sanad"
-version = "0.9.13"
+version = "0.9.14"
 description = "Sanad - a graph brain for AI coding agents: deterministic knowledge graph, graph-ops reasoning, lens debate council, edit blast-radius prediction, and a hallucination gate that rejects any claim without a chain of proof. No answer without Sanad."
 readme = "README.md"
 license = { file = "LICENSE" }
