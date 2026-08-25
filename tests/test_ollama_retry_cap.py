@@ -7,6 +7,10 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
+
+pytest.importorskip("openai", reason="optional openai extra not installed")
+
 import graphify.llm as llm
 
 

@@ -367,6 +367,7 @@ def _render_core(platform: Platform) -> str:
     install = _read_fragment(f"shell/{platform.shell}.md").rstrip("\n")
     dispatch = _read_fragment(f"dispatch/{platform.dispatch}.md").rstrip("\n")
     query_stub = _read_fragment(_QUERY_STUB).rstrip("\n")
+    headless = _read_fragment(f"headless/{platform.shell}.md").rstrip("\n")
 
     if platform.extra_sections:
         extra = "".join(
@@ -381,6 +382,7 @@ def _render_core(platform: Platform) -> str:
         .replace("@@INSTALL@@", install)
         .replace("@@DISPATCH@@", dispatch)
         .replace("@@QUERY_STUB@@", query_stub)
+        .replace("@@HEADLESS_BUILD@@", headless)
         .replace("@@HOOKS_TARGET@@", platform.hooks_target)
         .replace("@@EXTRA@@", extra)
     )
@@ -902,6 +904,29 @@ def _is_uv_from_interpreter_fix_line(line: str) -> bool:
     return "uv tool run" in line and "graphifyy python" in line
 
 
+_HEADLESS_BLOCK_LINES: set[str] | None = None
+
+
+def _is_headless_build_fix_line(line: str) -> bool:
+    """Whether a line belongs to the mandatory headless Gemini build path block.
+
+    The token-drain fix inserts a "Headless build path" block (lead paragraph,
+    fenced two-command pipeline, closing runbook paragraph) into every host body.
+    The block's exact lines live in ``fragments/headless/*.md`` — matching against
+    those files keeps this predicate in lockstep with the shipped text instead of
+    duplicating it here.
+    """
+    global _HEADLESS_BLOCK_LINES
+    if _HEADLESS_BLOCK_LINES is None:
+        _HEADLESS_BLOCK_LINES = set()
+        for shell in ("posix", "powershell"):
+            _HEADLESS_BLOCK_LINES.update(
+                _read_fragment(f"headless/{shell}.md").splitlines()
+            )
+        _HEADLESS_BLOCK_LINES.discard("")
+    return line in _HEADLESS_BLOCK_LINES
+
+
 # Every line that may differ between a rendered monolith and its pristine v8
 # baseline. Each predicate documents one sanctioned change-class; a blank line is
 # allowed because the multi-line fix blocks insert spacing. Anything else failing
@@ -919,6 +944,7 @@ _SANCTIONED_MONOLITH_DIFFS = (
     _is_shebang_allowlist_fix_line,
     _is_obsidian_usage_comment_line,
     _is_uv_from_interpreter_fix_line,
+    _is_headless_build_fix_line,
 )
 
 

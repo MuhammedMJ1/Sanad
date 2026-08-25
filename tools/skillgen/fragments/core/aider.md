@@ -1,6 +1,6 @@
 ---
 name: graphify
-description: "Use for any question about a codebase, its architecture, file relationships, or project content — especially when graphify-out/ exists, where the question should be treated as a graphify query first. Turns any input (code, docs, papers, images, videos) into a persistent knowledge graph with god nodes, community detection, and query/path/explain tools."
+description: "MANUAL-ONLY: invoke this skill ONLY when the user explicitly types /graphify or asks for graphify by name. NEVER auto-trigger it for general codebase/architecture questions — answer those normally without this skill. Turns any input (code, docs, papers, images, videos) into a persistent knowledge graph with god nodes, community detection, and query/path/explain tools."
 ---
 
 # /graphify
@@ -51,6 +51,16 @@ Use it for:
 ## What You Must Do When Invoked
 
 If the user invoked `/graphify --help` or `/graphify -h` (with no other arguments), print the contents of the `## Usage` section above verbatim and stop. Do not run any commands, do not detect files, do not default the path to `.`. Just print the Usage block and return.
+
+**Headless build path — MANDATORY when a Gemini key is set:** For any build request (bare path, fresh extraction, `--update`, `--mode deep`) when `GEMINI_API_KEY` or `GOOGLE_API_KEY` is set: do NOT run Steps 2–5 turn-by-turn — that orchestration re-reads the whole session context on every step and burns millions of tokens. After Step 1 resolves the interpreter, run the entire pipeline as two commands:
+
+```bash
+export PYTHONIOENCODING=utf-8
+"$(cat graphify-out/.graphify_python)" -m graphify extract INPUT_PATH --backend gemini 2>&1 | tail -15
+"$(cat graphify-out/.graphify_python)" -m graphify cluster-only INPUT_PATH 2>&1 | tail -10
+```
+
+Run the `extract` command with a 10-minute timeout (run it in the background for very large corpora). `extract` is the full pipeline headless — detect → AST → Gemini semantic extraction → merge → build → cluster → `graph.json` + `.graphify_analysis.json` (it also handles incremental `--update` runs via the manifest). `cluster-only` is self-contained: it names communities and regenerates `GRAPH_REPORT.md`, `graph.json`, and `graph.html`. After both commands succeed, skip straight to the final user summary at the end of Step 9 (paste the God Nodes / Surprising Connections / Suggested Questions sections) — do not run Steps 2–8 manually. Fall back to the step-by-step flow only if `graphify extract` exits non-zero for a reason you cannot fix; never fall back silently — tell the user why.
 
 If no path was given, use `.` (current directory). Do not ask the user for a path.
 
