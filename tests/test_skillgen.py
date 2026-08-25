@@ -257,11 +257,12 @@ def test_audit_coverage_passes_for_codex_and_windows():
 
 
 UNIFIED_DESCRIPTION = (
-    "Use for any question about a codebase, its architecture, file relationships, "
-    "or project content — especially when graphify-out/ exists, where the question "
-    "should be treated as a graphify query first. Turns any input (code, docs, "
-    "papers, images, videos) into a persistent knowledge graph with god nodes, "
-    "community detection, and query/path/explain tools."
+    "MANUAL-ONLY: invoke this skill ONLY when the user explicitly types /graphify "
+    "or asks for graphify by name. NEVER auto-trigger it for general "
+    "codebase/architecture questions — answer those normally without this skill. "
+    "Turns any input (code, docs, papers, images, videos) into a persistent "
+    "knowledge graph with god nodes, community detection, and query/path/explain "
+    "tools."
 )
 
 

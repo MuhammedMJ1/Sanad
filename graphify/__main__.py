@@ -540,11 +540,11 @@ def main() -> None:
         print("                             raw extraction with no flag defaults directed)")
         print("    --extract-path PATH     extractor source for suppression scan")
         print("  clone <github-url>      clone a GitHub repo locally and print its path for /graphify")
+        print("    --branch <branch>       checkout a specific branch (default: repo default)")
+        print("    --out <dir>             clone to a custom directory (default: ~/.graphify/repos/<owner>/<repo>)")
         print("  merge-driver <base> <current> <other>  git merge driver: union-merge two graph.json files (set up via hook install)")
         print("  merge-graphs <g1> <g2>  merge two or more graph.json files into one cross-repo graph")
         print("    --out <path>            output path (default: graphify-out/merged-graph.json)")
-        print("    --branch <branch>       checkout a specific branch (default: repo default)")
-        print("    --out <dir>             clone to a custom directory (default: ~/.graphify/repos/<owner>/<repo>)")
         print("  add <url>               fetch a URL and save it to ./raw, then update the graph")
         print("    --author \"Name\"         tag the author of the content")
         print("    --contributor \"Name\"    tag who added it to the corpus")
@@ -717,7 +717,14 @@ def main() -> None:
 
     if dispatch_install_cli(cmd):
         return
-    dispatch_command(cmd)
+    try:
+        dispatch_command(cmd)
+    except RuntimeError as exc:
+        # load_graph and friends raise RuntimeError with a user-facing message
+        # (unreadable/corrupt graph.json + the regenerate hint); surface it as a
+        # clean CLI error instead of a traceback.
+        print(f"error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

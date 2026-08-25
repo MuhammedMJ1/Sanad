@@ -1674,19 +1674,26 @@ def _main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
     graph_path = args.graph_flag or args.graph_path or _default_graph_json()
 
-    if args.transport == "http":
-        serve_http(
-            graph_path,
-            host=args.host,
-            port=args.port,
-            api_key=args.api_key,
-            path=args.path,
-            json_response=args.json_response,
-            stateless=args.stateless,
-            session_timeout=args.session_timeout,
-        )
-    else:
-        serve(graph_path)
+    try:
+        if args.transport == "http":
+            serve_http(
+                graph_path,
+                host=args.host,
+                port=args.port,
+                api_key=args.api_key,
+                path=args.path,
+                json_response=args.json_response,
+                stateless=args.stateless,
+                session_timeout=args.session_timeout,
+            )
+        else:
+            serve(graph_path)
+    except ImportError as exc:
+        # serve/serve_http raise ImportError with an install hint when the
+        # optional mcp/starlette extras are absent — print it cleanly instead
+        # of dumping a traceback on the console-script entry point.
+        print(f"error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
