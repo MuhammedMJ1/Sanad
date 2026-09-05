@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "docforensics"
+version = "0.1.0"
+description = "Read-only document tamper-trace scanner (PDF, JPEG, PNG, OOXML) with a blind, certificate-bound benchmark harness."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "pikepdf>=9.0",
+    "Pillow>=10.0",
+]
+
+[project.scripts]
+docforensics = "docforensics.cli:main"
+docforensics-fixtures = "docforensics_fixtures.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = [
+    "docforensics",
+    "docforensics.rules",
+    "docforensics.parsers",
+    "docforensics_fixtures",
+]
+
+[tool.setuptools.package-data]
+docforensics = ["profiles/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
