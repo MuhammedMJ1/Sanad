@@ -1,5 +1,5 @@
 # Gemini, and OpenAI.
-# Used by `graphify extract . --backend gemini` and the benchmark scripts.
+# Used by `sanad extract . --backend gemini` and the benchmark scripts.
 # The default graphify pipeline uses Claude Code subagents via skill.md;
 # this module provides a direct API path for non-Claude-Code environments.
 from __future__ import annotations
@@ -199,12 +199,12 @@ def provider_base_url_ok(base_url: str, name: str, *, warn: bool = True) -> bool
         parsed = urlparse(base_url)
     except Exception:
         if warn:
-            print(f"[graphify] WARNING: provider {name!r} has an unparseable base_url; ignoring.", file=sys.stderr)
+            print(f"[sanad] WARNING: provider {name!r} has an unparseable base_url; ignoring.", file=sys.stderr)
         return False
     if parsed.scheme not in ("http", "https"):
         if warn:
             print(
-                f"[graphify] WARNING: provider {name!r} base_url scheme {parsed.scheme!r} is not "
+                f"[sanad] WARNING: provider {name!r} base_url scheme {parsed.scheme!r} is not "
                 "http/https; ignoring.",
                 file=sys.stderr,
             )
@@ -213,7 +213,7 @@ def provider_base_url_ok(base_url: str, name: str, *, warn: bool = True) -> bool
     is_loopback = host in ("localhost", "127.0.0.1", "::1") or host.startswith("127.")
     if warn and parsed.scheme == "http" and not is_loopback:
         print(
-            f"[graphify] WARNING: provider {name!r} sends your corpus to {host!r} over plaintext "
+            f"[sanad] WARNING: provider {name!r} sends your corpus to {host!r} over plaintext "
             "http. Use https unless this is a trusted local endpoint.",
             file=sys.stderr,
         )
@@ -230,7 +230,7 @@ def _load_custom_providers() -> dict[str, dict]:
     allow_local = os.environ.get("GRAPHIFY_ALLOW_LOCAL_PROVIDERS", "").strip().lower() in ("1", "true", "yes")
     if local_path.is_file() and not allow_local:
         print(
-            f"[graphify] WARNING: ignoring project-local {local_path} (custom providers control "
+            f"[sanad] WARNING: ignoring project-local {local_path} (custom providers control "
             "where your corpus and API key are sent). Set GRAPHIFY_ALLOW_LOCAL_PROVIDERS=1 to load it.",
             file=sys.stderr,
         )
@@ -324,7 +324,7 @@ def _resolve_temperature(default: float | None, model: str = "") -> float | None
             return float(raw)
         except ValueError:
             print(
-                f"[graphify] GRAPHIFY_LLM_TEMPERATURE={raw!r} is not a number or "
+                f"[sanad] GRAPHIFY_LLM_TEMPERATURE={raw!r} is not a number or "
                 "'none'; falling back to the backend default.",
                 file=sys.stderr,
             )
@@ -536,7 +536,7 @@ def _read_files(units: "list[Path | FileSlice]", root: Path) -> str:
         p = unit_path(u)
         safe_path = _resolve_under_root(p, root)
         if safe_path is None:
-            print(f"[graphify] skipping {p}: symlink target outside corpus root", file=sys.stderr)
+            print(f"[sanad] skipping {p}: symlink target outside corpus root", file=sys.stderr)
             continue
         try:
             rel = p.relative_to(root).as_posix()
@@ -646,7 +646,7 @@ def _build_image_refs(image_files: list[Path], root: Path, *, read_bytes: bool =
     for p in image_files:
         abs_path = _resolve_under_root(p, root)
         if abs_path is None:
-            print(f"[graphify] skipping image {p}: symlink target outside corpus root", file=sys.stderr)
+            print(f"[sanad] skipping image {p}: symlink target outside corpus root", file=sys.stderr)
             continue
         try:
             rel = p.relative_to(root).as_posix()
@@ -658,11 +658,11 @@ def _build_image_refs(image_files: list[Path], root: Path, *, read_bytes: bool =
             try:
                 raw = abs_path.read_bytes()
             except OSError as exc:
-                print(f"[graphify] could not read image {rel}: {exc}", file=sys.stderr)
+                print(f"[sanad] could not read image {rel}: {exc}", file=sys.stderr)
                 raw = None
             if raw is not None and len(raw) > _MAX_IMAGE_BYTES:
                 print(
-                    f"[graphify] image {rel} is {len(raw) // 1024} KB, over the "
+                    f"[sanad] image {rel} is {len(raw) // 1024} KB, over the "
                     f"{_MAX_IMAGE_BYTES // (1024 * 1024)} MB inline-image limit for this "
                     "backend; sending it as a reference node without inline pixels.",
                     file=sys.stderr,
@@ -809,7 +809,7 @@ def _parse_llm_json(raw: str) -> dict:
     """
     if len(raw) > _LLM_JSON_MAX_BYTES:
         print(
-            f"[graphify] LLM response exceeds {_LLM_JSON_MAX_BYTES} bytes "
+            f"[sanad] LLM response exceeds {_LLM_JSON_MAX_BYTES} bytes "
             f"({len(raw)} bytes); refusing to parse and dropping chunk.",
             file=sys.stderr,
         )
@@ -874,7 +874,7 @@ def _parse_llm_json(raw: str) -> dict:
                     except json.JSONDecodeError:
                         break
     print(
-        f"[graphify] LLM returned invalid JSON, skipping chunk "
+        f"[sanad] LLM returned invalid JSON, skipping chunk "
         f"(first 200 chars: {raw[:200]!r})",
         file=sys.stderr,
     )
@@ -1042,7 +1042,7 @@ def _call_openai_compat(
                 # Bad env var: fall through to auto-derivation (not 131072 —
                 # hardcoding the cap is what causes OOM on constrained VRAM).
                 print(
-                    f"[graphify] GRAPHIFY_OLLAMA_NUM_CTX={num_ctx_raw!r} is not a valid integer; "
+                    f"[sanad] GRAPHIFY_OLLAMA_NUM_CTX={num_ctx_raw!r} is not a valid integer; "
                     f"using auto-derived value ({auto_num_ctx}).",
                     file=sys.stderr,
                 )
@@ -1052,7 +1052,7 @@ def _call_openai_compat(
                 # Ollama silently truncates the prompt and returns empty responses.
                 if num_ctx < estimated_input:
                     print(
-                        f"[graphify] warning: GRAPHIFY_OLLAMA_NUM_CTX={num_ctx} is smaller than "
+                        f"[sanad] warning: GRAPHIFY_OLLAMA_NUM_CTX={num_ctx} is smaller than "
                         f"the estimated chunk input (~{estimated_input} tokens). Ollama will "
                         f"silently truncate the prompt and return empty responses. "
                         f"Try --token-budget {max(1024, num_ctx // 3)} or increase NUM_CTX.",
@@ -1083,7 +1083,7 @@ def _call_openai_compat(
     # layer bisects the chunk — same recovery as a true truncation.
     if _response_is_hollow(raw_content, result) and result["finish_reason"] != "length":
         print(
-            f"[graphify] {backend or 'backend'} returned a hollow response "
+            f"[sanad] {backend or 'backend'} returned a hollow response "
             f"(content={'empty' if not (raw_content or '').strip() else 'no nodes/edges'}, "
             f"output_tokens={result['output_tokens']}); "
             "treating as truncation so adaptive retry can bisect the chunk.",
@@ -1093,7 +1093,7 @@ def _call_openai_compat(
     output_tokens = result["output_tokens"]
     if output_tokens < 50 and backend == "ollama":
         print(
-            "[graphify] warning: ollama returned very few tokens — likely causes: "
+            "[sanad] warning: ollama returned very few tokens — likely causes: "
             "(1) VRAM pressure: check `nvidia-smi` and reduce chunk size with "
             "--token-budget (e.g. --token-budget 4096) or set "
             "GRAPHIFY_OLLAMA_NUM_CTX to a smaller value; "
@@ -1134,7 +1134,7 @@ def _call_claude(api_key: str, model: str, user_message: str, max_tokens: int = 
     result["finish_reason"] = "length" if resp.stop_reason == "max_tokens" else "stop"
     if _response_is_hollow(raw_content, result) and result["finish_reason"] != "length":
         print(
-            "[graphify] claude returned a hollow response; treating as "
+            "[sanad] claude returned a hollow response; treating as "
             "truncation so adaptive retry can bisect the chunk.",
             file=sys.stderr,
         )
@@ -1295,7 +1295,7 @@ def _call_claude_cli(user_message: str, max_tokens: int = 8192, *, deep_mode: bo
     result["finish_reason"] = "length" if stop_reason == "max_tokens" else "stop"
     if _response_is_hollow(raw_content, result) and result["finish_reason"] != "length":
         print(
-            "[graphify] claude-cli returned a hollow response; treating as "
+            "[sanad] claude-cli returned a hollow response; treating as "
             "truncation so adaptive retry can bisect the chunk.",
             file=sys.stderr,
         )
@@ -1358,7 +1358,7 @@ def _call_azure(
     result["finish_reason"] = resp.choices[0].finish_reason
     if _response_is_hollow(raw_content, result) and result["finish_reason"] != "length":
         print(
-            "[graphify] azure returned a hollow response; treating as "
+            "[sanad] azure returned a hollow response; treating as "
             "truncation so adaptive retry can bisect the chunk.",
             file=sys.stderr,
         )
@@ -1402,7 +1402,7 @@ def _call_bedrock(model: str, user_message: str, max_tokens: int = 8192, *, deep
     result["finish_reason"] = "length" if resp.get("stopReason") == "max_tokens" else "stop"
     if _response_is_hollow(text, result) and result["finish_reason"] != "length":
         print(
-            "[graphify] bedrock returned a hollow response; treating as "
+            "[sanad] bedrock returned a hollow response; treating as "
             "truncation so adaptive retry can bisect the chunk.",
             file=sys.stderr,
         )
@@ -1453,7 +1453,7 @@ def extract_files_direct(
         ollama_url = os.environ.get("OLLAMA_BASE_URL", cfg.get("base_url", ""))
         _validate_ollama_base_url(ollama_url)
         print(
-            "[graphify] WARNING: ollama backend selected with no OLLAMA_API_KEY set; "
+            "[sanad] WARNING: ollama backend selected with no OLLAMA_API_KEY set; "
             f"sending corpus to {ollama_url}. Set OLLAMA_API_KEY (any non-empty value) "
             "to suppress this warning.",
             file=sys.stderr,
@@ -1715,26 +1715,26 @@ def _extract_with_adaptive_retry(
             halves = _split_lone_slice()
             if halves is not None:
                 print(
-                    f"[graphify] slice of {unit_path(chunk[0])} exceeded context at "
+                    f"[sanad] slice of {unit_path(chunk[0])} exceeded context at "
                     f"depth {_depth}; splitting the slice and retrying",
                     file=sys.stderr,
                 )
                 return _merge_two([halves[0]], [halves[1]])
             print(
-                f"[graphify] single-file chunk {unit_path(chunk[0])} exceeds model context "
+                f"[sanad] single-file chunk {unit_path(chunk[0])} exceeds model context "
                 f"and cannot be split further: {exc}",
                 file=sys.stderr,
             )
             return {"nodes": [], "edges": [], "hyperedges": [], "input_tokens": 0, "output_tokens": 0, "model": model, "finish_reason": "stop"}
         if _depth >= max_depth:
             print(
-                f"[graphify] chunk of {len(chunk)} still overflows context at "
+                f"[sanad] chunk of {len(chunk)} still overflows context at "
                 f"recursion depth {_depth} (max {max_depth}) — dropping",
                 file=sys.stderr,
             )
             return {"nodes": [], "edges": [], "hyperedges": [], "input_tokens": 0, "output_tokens": 0, "model": model, "finish_reason": "stop"}
         print(
-            f"[graphify] chunk of {len(chunk)} exceeded context at depth "
+            f"[sanad] chunk of {len(chunk)} exceeded context at depth "
             f"{_depth} ({type(exc).__name__}); splitting in half and retrying",
             file=sys.stderr,
         )
@@ -1762,13 +1762,13 @@ def _extract_with_adaptive_retry(
         halves = _split_lone_slice()
         if halves is not None:
             print(
-                f"[graphify] slice of {unit_path(chunk[0])} truncated at depth {_depth}; "
+                f"[sanad] slice of {unit_path(chunk[0])} truncated at depth {_depth}; "
                 f"splitting the slice and retrying",
                 file=sys.stderr,
             )
             return _merge_two([halves[0]], [halves[1]])
         print(
-            f"[graphify] single-file chunk {unit_path(chunk[0])} truncated at "
+            f"[sanad] single-file chunk {unit_path(chunk[0])} truncated at "
             f"max_completion_tokens — partial result kept",
             file=sys.stderr,
         )
@@ -1776,14 +1776,14 @@ def _extract_with_adaptive_retry(
 
     if _depth >= max_depth:
         print(
-            f"[graphify] chunk of {len(chunk)} still truncated at recursion "
+            f"[sanad] chunk of {len(chunk)} still truncated at recursion "
             f"depth {_depth} (max {max_depth}) — partial result kept",
             file=sys.stderr,
         )
         return result
 
     print(
-        f"[graphify] chunk of {len(chunk)} truncated at depth {_depth}, "
+        f"[sanad] chunk of {len(chunk)} truncated at depth {_depth}, "
         f"splitting into halves of {len(chunk) // 2} and "
         f"{len(chunk) - len(chunk) // 2}",
         file=sys.stderr,
@@ -1922,7 +1922,7 @@ def extract_corpus_parallel(
                 merge_existing=True,
             )
         except Exception as _exc:  # noqa: BLE001 — checkpoint is best-effort
-            print(f"[graphify] incremental cache checkpoint failed: {_exc}", file=sys.stderr)
+            print(f"[sanad] incremental cache checkpoint failed: {_exc}", file=sys.stderr)
 
     workers = max(1, min(max_concurrency, total))
     if workers == 1:
@@ -1931,7 +1931,7 @@ def extract_corpus_parallel(
         for idx, chunk in enumerate(chunks):
             _, result, exc = _run_one(idx, chunk)
             if exc is not None:
-                print(f"[graphify] chunk {idx + 1}/{total} failed: {exc}", file=sys.stderr)
+                print(f"[sanad] chunk {idx + 1}/{total} failed: {exc}", file=sys.stderr)
                 merged["failed_chunks"] += 1
                 continue
             assert result is not None
@@ -1954,7 +1954,7 @@ def extract_corpus_parallel(
                 idx, result, exc = future.result()
                 if exc is not None:
                     print(
-                        f"[graphify] chunk {idx + 1}/{total} failed: {exc}",
+                        f"[sanad] chunk {idx + 1}/{total} failed: {exc}",
                         file=sys.stderr,
                     )
                     merged["failed_chunks"] += 1
@@ -1972,7 +1972,7 @@ def extract_corpus_parallel(
     # summary block makes the problem visible.
     if merged["failed_chunks"] > 0:
         print(
-            f"[graphify] WARNING: {merged['failed_chunks']}/{total} semantic chunk(s) failed"
+            f"[sanad] WARNING: {merged['failed_chunks']}/{total} semantic chunk(s) failed"
             " — see errors above. Partial results returned.",
             file=sys.stderr,
         )
@@ -2222,14 +2222,14 @@ def _validate_ollama_base_url(url: str, *, warn: bool = True) -> None:
     except Exception:
         if warn:
             print(
-                f"[graphify] WARNING: OLLAMA_BASE_URL={url!r} is not a parseable URL.",
+                f"[sanad] WARNING: OLLAMA_BASE_URL={url!r} is not a parseable URL.",
                 file=sys.stderr,
             )
         return
     if parsed.scheme not in ("http", "https"):
         if warn:
             print(
-                f"[graphify] WARNING: OLLAMA_BASE_URL has unexpected scheme {parsed.scheme!r}; "
+                f"[sanad] WARNING: OLLAMA_BASE_URL has unexpected scheme {parsed.scheme!r}; "
                 "expected http or https.",
                 file=sys.stderr,
             )
@@ -2244,7 +2244,7 @@ def _validate_ollama_base_url(url: str, *, warn: bool = True) -> None:
     if warn and not is_loopback:
         scheme_note = " (UNENCRYPTED)" if parsed.scheme == "http" else ""
         print(
-            f"[graphify] WARNING: OLLAMA_BASE_URL points to non-loopback host {host!r}{scheme_note}. "
+            f"[sanad] WARNING: OLLAMA_BASE_URL points to non-loopback host {host!r}{scheme_note}. "
             "Your full corpus will be sent to that endpoint. "
             "Set OLLAMA_BASE_URL=http://localhost:11434/v1 to keep extraction local.",
             file=sys.stderr,
@@ -2284,7 +2284,7 @@ def detect_backend() -> str | None:
 # When graphify runs inside an orchestrating agent (Claude Code / Gemini CLI),
 # the agent names communities itself per skill.md Step 5 - it reads the analysis
 # file and writes 2-5 word names with its own reasoning, no API call. When
-# graphify is run as a bare CLI (``graphify extract . --backend X``), there is no
+# graphify is run as a bare CLI (``sanad extract . --backend X``), there is no
 # agent to do that step, so community labels stay ``Community 0/1/2...``. These
 # helpers fill that gap: ask the configured backend to name communities in ONE
 # batched call and return a complete ``{cid: name}`` map (#1097).
@@ -2418,7 +2418,7 @@ def _label_batch_with_retry(
         # case (single community or max depth) re-raise so the caller skips it.
         if len(batch_cids) <= 1 or depth >= max_depth:
             print(
-                f"[graphify label] batch of {len(batch_cids)} still unparseable "
+                f"[sanad label] batch of {len(batch_cids)} still unparseable "
                 f"at depth {depth} (cids={batch_cids[:5]}"
                 f"{'...' if len(batch_cids) > 5 else ''}): {exc}",
                 file=sys.stderr,
@@ -2521,7 +2521,7 @@ def label_communities(
             start = batch_idx * batch_size
             end = min(start + batch_size, len(labeled_cids))
             print(
-                f"[graphify label] batch {batch_idx + 1}/{n_batches} "
+                f"[sanad label] batch {batch_idx + 1}/{n_batches} "
                 f"({end - start} communities) failed: {exc}",
                 file=sys.stderr,
             )
@@ -2571,7 +2571,7 @@ def generate_community_labels(
     if not backend:
         if not quiet:
             print(
-                "[graphify label] no LLM backend configured; keeping Community N "
+                "[sanad label] no LLM backend configured; keeping Community N "
                 "placeholders. Set an API key (e.g. GOOGLE_API_KEY) or pass --backend.",
                 file=sys.stderr,
             )
@@ -2586,7 +2586,7 @@ def generate_community_labels(
     except Exception as exc:
         if not quiet:
             print(
-                f"[graphify label] warning: community labeling failed ({exc}); "
+                f"[sanad label] warning: community labeling failed ({exc}); "
                 "using Community N placeholders.",
                 file=sys.stderr,
             )

@@ -11,9 +11,9 @@
 #   - nodes get short refs (n1, n2, ...) so follow-up ops cost a few tokens.
 #
 # Two drivers share the engine:
-#   `graphify ops`   — any agent (or human) issues ops directly; session
+#   `sanad ops`   — any agent (or human) issues ops directly; session
 #                      state persists across CLI invocations. No API key.
-#   `graphify think` — an autonomous loop where the configured LLM backend
+#   `sanad think` — an autonomous loop where the configured LLM backend
 #                      emits ops until it answers; the answer can be piped
 #                      through the factcheck hallucination gate (--verify).
 from __future__ import annotations
@@ -330,7 +330,7 @@ class MindSession:
             self.history.append(line)
         return result
 
-    # ── persistence (drives `graphify ops` across CLI invocations) ───────────
+    # ── persistence (drives `sanad ops` across CLI invocations) ───────────
 
     def to_state(self) -> dict:
         return {
@@ -379,7 +379,7 @@ def load_session(out_dir: Path, G: nx.Graph, scars: dict | None = None,
     return MindSession.from_state(G, state, scars, memory_data)
 
 
-# ── autonomous think loop (`graphify think`) ─────────────────────────────────
+# ── autonomous think loop (`sanad think`) ─────────────────────────────────
 
 THINK_SYSTEM = """You are investigating a codebase through its knowledge graph.
 You cannot read files. You act ONLY by emitting exactly one op per turn.

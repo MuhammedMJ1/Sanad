@@ -12,7 +12,7 @@ _CHECKOUT_MARKER = "# graphify-checkout-hook-start"
 _CHECKOUT_MARKER_END = "# graphify-checkout-hook-end"
 
 # __PINNED_PYTHON__ is replaced at install time with the absolute path of the
-# Python interpreter that ran `graphify hook install`.  For uv-tool and pipx
+# Python interpreter that ran `sanad hook install`.  For uv-tool and pipx
 # installs the interpreter lives inside an isolated venv, so the launcher on
 # PATH is the only entry point — and GUI git clients / CI runners often have a
 # minimal PATH that omits ~/.local/bin.  Pinning sys.executable at install time
@@ -94,7 +94,7 @@ if [ -z "$GRAPHIFY_PYTHON" ]; then
     elif command -v python >/dev/null 2>&1 && python -c "$_GFY_PROBE" 2>/dev/null; then
         GRAPHIFY_PYTHON="python"
     else
-        echo "[graphify hook] could not locate a Python with graphify installed. Add the graphify bin dir to PATH or re-run 'graphify hook install' from the env where graphify lives." >&2
+        echo "[sanad hook] could not locate a Python with sanad installed. Add the sanad bin dir to PATH or re-run 'sanad hook install' from the env where sanad lives." >&2
         exit 0
     fi
 fi
@@ -114,14 +114,14 @@ changed = [Path(f.strip()) for f in changed_raw.strip().splitlines() if f.strip(
 if not changed:
     sys.exit(0)
 
-print(f'[graphify hook] {len(changed)} file(s) changed - rebuilding graph...')
+print(f'[sanad hook] {len(changed)} file(s) changed - rebuilding graph...')
 
 try:
     from graphify.watch import _rebuild_code, _apply_resource_limits
     _apply_resource_limits()
     _timeout = int(os.environ.get('GRAPHIFY_REBUILD_TIMEOUT', '600'))
     if _timeout > 0 and hasattr(signal, 'SIGALRM'):
-        signal.signal(signal.SIGALRM, lambda *_: (_ for _ in ()).throw(TimeoutError(f'graphify rebuild exceeded {_timeout}s')))
+        signal.signal(signal.SIGALRM, lambda *_: (_ for _ in ()).throw(TimeoutError(f'sanad rebuild exceeded {_timeout}s')))
         signal.alarm(_timeout)
     _force = os.environ.get('GRAPHIFY_FORCE', '').lower() in ('1', 'true', 'yes')
     _root = Path('.')
@@ -144,10 +144,10 @@ try:
     except Exception:
         pass
 except TimeoutError as exc:
-    print(f'[graphify hook] {exc}')
+    print(f'[sanad hook] {exc}')
     sys.exit(1)
 except Exception as exc:
-    print(f'[graphify hook] Rebuild failed: {exc}')
+    print(f'[sanad hook] Rebuild failed: {exc}')
     sys.exit(1)
 """
 
@@ -159,7 +159,7 @@ try:
     _apply_resource_limits()
     _timeout = int(os.environ.get('GRAPHIFY_REBUILD_TIMEOUT', '600'))
     if _timeout > 0 and hasattr(signal, 'SIGALRM'):
-        signal.signal(signal.SIGALRM, lambda *_: (_ for _ in ()).throw(TimeoutError(f'graphify rebuild exceeded {_timeout}s')))
+        signal.signal(signal.SIGALRM, lambda *_: (_ for _ in ()).throw(TimeoutError(f'sanad rebuild exceeded {_timeout}s')))
         signal.alarm(_timeout)
     _force = os.environ.get('GRAPHIFY_FORCE', '').lower() in ('1', 'true', 'yes')
     # post-checkout: branch switch can touch arbitrary files; full rebuild path
@@ -185,10 +185,10 @@ try:
     except Exception:
         pass
 except TimeoutError as exc:
-    print(f'[graphify] {exc}')
+    print(f'[sanad] {exc}')
     sys.exit(1)
 except Exception as exc:
-    print(f'[graphify] Rebuild failed: {exc}')
+    print(f'[sanad] Rebuild failed: {exc}')
     sys.exit(1)
 """
 
@@ -289,7 +289,7 @@ export GRAPHIFY_CHANGED="$CHANGED"
 _GRAPHIFY_LOG="${HOME}/.cache/graphify-rebuild.log"
 mkdir -p "$(dirname "$_GRAPHIFY_LOG")"
 export GRAPHIFY_REBUILD_LOG="$_GRAPHIFY_LOG"
-echo "[graphify hook] launching background rebuild (log: $_GRAPHIFY_LOG)"
+echo "[sanad hook] launching background rebuild (log: $_GRAPHIFY_LOG)"
 """ + _detached_launch(_REBUILD_BODY_COMMIT) + """# graphify-hook-end
 """
 
@@ -338,7 +338,7 @@ GIT_DIR=${GIT_DIR:-$(git rev-parse --git-dir 2>/dev/null)}
 _GRAPHIFY_LOG="${HOME}/.cache/graphify-rebuild.log"
 mkdir -p "$(dirname "$_GRAPHIFY_LOG")"
 export GRAPHIFY_REBUILD_LOG="$_GRAPHIFY_LOG"
-echo "[graphify] Branch switched - launching background rebuild (log: $_GRAPHIFY_LOG)"
+echo "[sanad] Branch switched - launching background rebuild (log: $_GRAPHIFY_LOG)"
 """ + _detached_launch(_REBUILD_BODY_CHECKOUT) + """# graphify-checkout-hook-end
 """
 
@@ -410,7 +410,7 @@ def _hooks_dir(root: Path) -> Path:
         # by another tool). Surface them on stderr instead of silently
         # falling through to the default hooks directory.
         print(
-            f"[graphify hooks] could not read core.hooksPath from "
+            f"[sanad hooks] could not read core.hooksPath from "
             f"{root / '.git' / 'config'}: {exc}",
             file=sys.stderr,
         )

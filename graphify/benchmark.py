@@ -144,7 +144,7 @@ def print_benchmark(result: dict) -> None:
         print(f"Benchmark error: {result['error']}")
         return
 
-    print(f"\ngraphify token reduction benchmark")
+    print(f"\nsanad token reduction benchmark")
     print(_hr(50))
     arrow = _safe("→", "->")
     print(f"  Corpus:          {result['corpus_words']:,} words {arrow} ~{result['corpus_tokens']:,} tokens (naive)")

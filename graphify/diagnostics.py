@@ -279,7 +279,7 @@ def _read_json_file(path: str | Path) -> dict[str, Any]:
     except (json.JSONDecodeError, OSError) as exc:
         raise RuntimeError(
             f"Cannot parse {json_path}: {exc}. "
-            "The file may be corrupted — re-run 'graphify extract'."
+            "The file may be corrupted — re-run 'sanad extract'."
         ) from exc
     if not isinstance(data, dict):
         raise ValueError("diagnostic input must be a JSON object")
@@ -339,7 +339,7 @@ def format_diagnostic_json(summary: dict[str, Any]) -> dict[str, Any]:
 def format_diagnostic_report(summary: dict[str, Any]) -> str:
     suppression = summary.get("producer_suppression", {})
     lines = [
-        "[graphify] MultiDiGraph edge-collapse diagnostic",
+        "[sanad] MultiDiGraph edge-collapse diagnostic",
         f"input: {summary.get('input_path', '<in-memory>')}",
         "input_stage: provided JSON (normal graph.json is post-build)",
         f"effective_directed: {summary.get('effective_directed', '<direct-call>')}",

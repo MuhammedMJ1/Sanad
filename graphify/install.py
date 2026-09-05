@@ -187,7 +187,7 @@ def _copy_skill_file(platform_name: str, *, project: bool = False, project_dir: 
     skill_file = "skill.md" if platform_name == "gemini" else _PLATFORM_CONFIG[platform_name]["skill_file"]
     skill_src = Path(__file__).parent / skill_file
     if not skill_src.exists():
-        print(f"error: {skill_file} not found in package - reinstall graphify", file=sys.stderr)
+        print(f"error: {skill_file} not found in package - reinstall sanad", file=sys.stderr)
         sys.exit(1)
 
     refs_src = _packaged_skill_refs_dir(platform_name)
@@ -196,7 +196,7 @@ def _copy_skill_file(platform_name: str, *, project: bool = False, project_dir: 
         # the package. Fail loud rather than silently shipping an empty sidecar.
         print(
             f"error: references for '{platform_name}' not found in package "
-            f"({refs_src}) - reinstall graphify",
+            f"({refs_src}) - reinstall sanad",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -292,7 +292,7 @@ def _print_project_git_add_hint(paths: list[Path]) -> None:
 def _claude_pretooluse_hooks() -> "list[dict]":
     """graphify's Claude/Codebuddy PreToolUse hooks, resolved at install time.
 
-    The command invokes `graphify hook-guard <search|read>` via the absolute exe
+    The command invokes `sanad hook-guard <search|read>` via the absolute exe
     path (`_resolve_graphify_exe`), so it parses under sh, cmd.exe and PowerShell
     alike — this is the #522 fix, and mirrors the codex hook. Matchers stay "Bash"
     and "Read|Glob" and the command always contains "graphify", so the existing
@@ -568,7 +568,7 @@ def install(platform: str = "claude", *, project: bool = False, project_dir: Pat
         command_src = Path(__file__).parent / "command-kilo.md"
         if not command_src.exists():
             print(
-                f"error: command-kilo.md not found in package - reinstall graphify",
+                f"error: command-kilo.md not found in package - reinstall sanad",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -626,7 +626,7 @@ def install(platform: str = "claude", *, project: bool = False, project_dir: Pat
     print()
 def _print_install_usage() -> None:
     platforms = ", ".join([*_PLATFORM_CONFIG, "gemini", "cursor"])
-    print("Usage: graphify install [--project] [--platform P|P]")
+    print("Usage: sanad install [--project] [--platform P|P]")
     print(f"Platforms: {platforms}")
 _CLAUDE_MD_MARKER = "## graphify"
 _CODEBUDDY_MD_MARKER = "## graphify"
@@ -1411,19 +1411,19 @@ def _amp_uninstall(project_dir: Path | None = None) -> None:
         print("skill removed")
     _agents_uninstall(project_dir or Path("."), platform="amp")
 def _agents_platform_install(project_dir: Path | None = None) -> None:
-    """`graphify agents install`: skill into ~/.agents/skills + AGENTS.md.
+    """`sanad agents install`: skill into ~/.agents/skills + AGENTS.md.
 
     The amp-twin of the generic Agent-Skills target. Mirrors _amp_install but
     lands the skill at the spec's user-global ~/.agents/skills (set in
     _platform_skill_destination). Wiring AGENTS.md keeps it honest with the
-    rendered hooks reference, which points at `graphify agents install`. The bare
-    `graphify install --platform agents` path stays skill-only (via install()),
+    rendered hooks reference, which points at `sanad agents install`. The bare
+    `sanad install --platform agents` path stays skill-only (via install()),
     exactly as amp's `--platform amp` does.
     """
     _copy_skill_file("agents")
     _agents_install(project_dir or Path("."), "agents")
 def _agents_platform_uninstall(project_dir: Path | None = None) -> None:
-    """`graphify agents uninstall`: remove the skill and the AGENTS.md section."""
+    """`sanad agents uninstall`: remove the skill and the AGENTS.md section."""
     removed = _remove_skill_file("agents")
     if removed:
         print("skill removed")
@@ -1707,7 +1707,7 @@ def claude_uninstall(project_dir: Path | None = None, *, project: bool = False) 
     """Remove the graphify skill tree (SKILL.md + references/) and the graphify
     section from CLAUDE.md and its local-only variants, plus the PreToolUse hook.
 
-    Mirrors gemini_uninstall: the bare `graphify uninstall` and `graphify claude
+    Mirrors gemini_uninstall: the bare `sanad uninstall` and `sanad claude
     uninstall` must remove the installed skill, not just strip CLAUDE.md, or the
     progressive-disclosure tree (SKILL.md + references/) is orphaned (#1121).
 
@@ -1984,7 +1984,7 @@ def dispatch_install_cli(cmd: str) -> bool:
             else:
                 claude_uninstall()
         else:
-            print("Usage: graphify claude [install|uninstall]", file=sys.stderr)
+            print("Usage: sanad claude [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "codebuddy":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -1993,7 +1993,7 @@ def dispatch_install_cli(cmd: str) -> bool:
         elif subcmd == "uninstall":
             codebuddy_uninstall()
         else:
-            print("Usage: graphify codebuddy [install|uninstall]", file=sys.stderr)
+            print("Usage: sanad codebuddy [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "gemini":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -2002,7 +2002,7 @@ def dispatch_install_cli(cmd: str) -> bool:
         elif subcmd == "uninstall":
             gemini_uninstall(project=("--project" in sys.argv[3:]))
         else:
-            print("Usage: graphify gemini [install|uninstall]", file=sys.stderr)
+            print("Usage: sanad gemini [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "cursor":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -2011,7 +2011,7 @@ def dispatch_install_cli(cmd: str) -> bool:
         elif subcmd == "uninstall":
             _cursor_uninstall(Path("."))
         else:
-            print("Usage: graphify cursor [install|uninstall]", file=sys.stderr)
+            print("Usage: sanad cursor [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "vscode":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -2020,7 +2020,7 @@ def dispatch_install_cli(cmd: str) -> bool:
         elif subcmd == "uninstall":
             vscode_uninstall()
         else:
-            print("Usage: graphify vscode [install|uninstall]", file=sys.stderr)
+            print("Usage: sanad vscode [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "copilot":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -2036,7 +2036,7 @@ def dispatch_install_cli(cmd: str) -> bool:
                 removed = _remove_skill_file("copilot")
                 print("skill removed" if removed else "nothing to remove")
         else:
-            print("Usage: graphify copilot [install|uninstall]", file=sys.stderr)
+            print("Usage: sanad copilot [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "kilo":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -2045,7 +2045,7 @@ def dispatch_install_cli(cmd: str) -> bool:
         elif subcmd == "uninstall":
             _kilo_uninstall(Path("."))
         else:
-            print("Usage: graphify kilo [install|uninstall]", file=sys.stderr)
+            print("Usage: sanad kilo [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "kiro":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -2054,7 +2054,7 @@ def dispatch_install_cli(cmd: str) -> bool:
         elif subcmd == "uninstall":
             _kiro_uninstall(Path("."))
         else:
-            print("Usage: graphify kiro [install|uninstall]", file=sys.stderr)
+            print("Usage: sanad kiro [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "devin":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -2070,7 +2070,7 @@ def dispatch_install_cli(cmd: str) -> bool:
                 removed = _remove_skill_file("devin")
                 print("skill removed" if removed else "nothing to remove")
         else:
-            print("Usage: graphify devin [install|uninstall]", file=sys.stderr)
+            print("Usage: sanad devin [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "pi":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -2085,7 +2085,7 @@ def dispatch_install_cli(cmd: str) -> bool:
             else:
                 _remove_skill_file("pi")
         else:
-            print("Usage: graphify pi [install|uninstall]", file=sys.stderr)
+            print("Usage: sanad pi [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "amp":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -2100,7 +2100,7 @@ def dispatch_install_cli(cmd: str) -> bool:
             else:
                 _amp_uninstall(Path("."))
         else:
-            print("Usage: graphify amp [install|uninstall]", file=sys.stderr)
+            print("Usage: sanad amp [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd in ("agents", "skills"):
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -2115,7 +2115,7 @@ def dispatch_install_cli(cmd: str) -> bool:
             else:
                 _agents_platform_uninstall(Path("."))
         else:
-            print(f"Usage: graphify {cmd} [install|uninstall]", file=sys.stderr)
+            print(f"Usage: sanad {cmd} [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd in ("aider", "codex", "opencode", "claw", "droid", "trae", "trae-cn", "hermes"):
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -2132,7 +2132,7 @@ def dispatch_install_cli(cmd: str) -> bool:
                 if cmd == "codex":
                     _uninstall_codex_hook(Path("."))
         else:
-            print(f"Usage: graphify {cmd} [install|uninstall]", file=sys.stderr)
+            print(f"Usage: sanad {cmd} [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "antigravity":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -2147,6 +2147,6 @@ def dispatch_install_cli(cmd: str) -> bool:
             else:
                 _antigravity_uninstall(Path("."))
         else:
-            print("Usage: graphify antigravity [install|uninstall]", file=sys.stderr)
+            print("Usage: sanad antigravity [install|uninstall]", file=sys.stderr)
             sys.exit(1)
     return True

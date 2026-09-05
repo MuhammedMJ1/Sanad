@@ -204,7 +204,7 @@ def test_diagnose_file_reads_json_and_formats_report(tmp_path: Path) -> None:
     report = format_diagnostic_report(summary)
 
     assert summary["input_path"] == str(graph_path)
-    assert "[graphify] MultiDiGraph edge-collapse diagnostic" in report
+    assert "[sanad] MultiDiGraph edge-collapse diagnostic" in report
     assert "directed_same_endpoint_collapsed_edges: 3" in report
     assert "relation_variant_groups: 1" in report
     assert "producer_suppression_sites:" in report
@@ -338,7 +338,7 @@ def test_diagnose_multigraph_cli_human_output(monkeypatch, tmp_path: Path, capsy
     mainmod.main()
 
     out = capsys.readouterr().out
-    assert "[graphify] MultiDiGraph edge-collapse diagnostic" in out
+    assert "[sanad] MultiDiGraph edge-collapse diagnostic" in out
     assert "raw_edges: 7" in out
     assert "effective_directed: True" in out
     assert "directed_same_endpoint_collapsed_edges: 3" in out
@@ -406,8 +406,8 @@ def test_diagnose_multigraph_cli_json_output(monkeypatch, tmp_path: Path, capsys
 @pytest.mark.parametrize(
     ("argv_tail", "expected"),
     [
-        ([], "Usage: graphify diagnose multigraph"),
-        (["wrong"], "Usage: graphify diagnose multigraph"),
+        ([], "Usage: sanad diagnose multigraph"),
+        (["wrong"], "Usage: sanad diagnose multigraph"),
         (["multigraph", "--graph"], "error: --graph requires a path"),
         (["multigraph", "--max-examples"], "error: --max-examples requires an integer"),
         (["multigraph", "--max-examples", "many"], "error: --max-examples requires an integer"),

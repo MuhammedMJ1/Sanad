@@ -26,14 +26,14 @@ def _load_manifest() -> dict:
             try:
                 _GLOBAL_MANIFEST.rename(backup)
                 print(
-                    f"[graphify global] manifest at {_GLOBAL_MANIFEST} failed to parse ({exc}); "
+                    f"[sanad global] manifest at {_GLOBAL_MANIFEST} failed to parse ({exc}); "
                     f"moved to {backup} and starting fresh. Restore from the backup if this was "
                     f"unexpected.",
                     file=sys.stderr,
                 )
             except Exception as rename_exc:
                 print(
-                    f"[graphify global] manifest at {_GLOBAL_MANIFEST} failed to parse ({exc}) "
+                    f"[sanad global] manifest at {_GLOBAL_MANIFEST} failed to parse ({exc}) "
                     f"and could not be backed up ({rename_exc}). Starting fresh.",
                     file=sys.stderr,
                 )
@@ -92,7 +92,7 @@ def global_add(source_path: Path, repo_tag: str) -> dict:
     existing_path = existing.get("source_path", "")
     if existing_path and existing_path != str(source_path.resolve()):
         print(
-            f"[graphify global] warning: repo tag '{repo_tag}' previously pointed to "
+            f"[sanad global] warning: repo tag '{repo_tag}' previously pointed to "
             f"{existing_path!r}, now updating to {str(source_path.resolve())!r}. "
             f"Use --as <tag> to give it a different name.",
             file=sys.stderr,

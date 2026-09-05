@@ -112,7 +112,7 @@ def _normalize_hyperedge_members(he: object) -> None:
                     deduped.append(ref)
                 he["nodes"] = deduped
                 print(
-                    f"[graphify] WARNING: hyperedge "
+                    f"[sanad] WARNING: hyperedge "
                     f"'{he.get('id', '?')}' uses field '{alias}' instead of "
                     f"'nodes'; normalizing.",
                     file=sys.stderr,
@@ -376,7 +376,7 @@ def build_from_json(extraction: dict, *, directed: bool = False, root: str | Pat
                 if e.get("source") == node_id or e.get("target") == node_id
             )
             print(
-                f"[graphify] WARNING: node '{node_id}' uses field 'source' instead of "
+                f"[sanad] WARNING: node '{node_id}' uses field 'source' instead of "
                 f"'source_file' — {affected_edges} edge(s) may be misrouted. "
                 f"Rename the field to 'source_file' to silence this warning.",
                 file=sys.stderr,
@@ -404,7 +404,7 @@ def build_from_json(extraction: dict, *, directed: bool = False, root: str | Pat
     # Dangling edges (stdlib/external imports) are expected - only warn about real schema errors.
     real_errors = [e for e in errors if "does not match any node id" not in e]
     if real_errors:
-        print(f"[graphify] Extraction warning ({len(real_errors)} issues): {real_errors[0]}", file=sys.stderr)
+        print(f"[sanad] Extraction warning ({len(real_errors)} issues): {real_errors[0]}", file=sys.stderr)
     # Deterministic semantic re-key (#1504/#1509): the node-ID stem is now the
     # full repo-relative path (docs/v1/api/README.md -> docs_v1_api_readme), but
     # the semantic cache is UNVERSIONED, so a cached/LLM fragment can still carry
@@ -445,7 +445,7 @@ def build_from_json(extraction: dict, *, directed: bool = False, root: str | Pat
                 hash(node["id"])
             except TypeError:
                 print(
-                    f"[graphify] WARNING: skipping node with non-hashable id "
+                    f"[sanad] WARNING: skipping node with non-hashable id "
                     f"{node['id']!r} (must be a string).",
                     file=sys.stderr,
                 )
@@ -627,7 +627,7 @@ def build_from_json(extraction: dict, *, directed: bool = False, root: str | Pat
             hash(tgt)
         except TypeError:
             print(
-                f"[graphify] WARNING: skipping edge with non-hashable endpoint "
+                f"[sanad] WARNING: skipping edge with non-hashable endpoint "
                 f"(source={src!r}, target={tgt!r}).",
                 file=sys.stderr,
             )
@@ -794,7 +794,7 @@ def deduplicate_by_label(nodes: list[dict], edges: list[dict]) -> tuple[list[dic
     if not remap:
         return nodes, edges
 
-    print(f"[graphify] Deduplicated {len(remap)} duplicate node(s) by label.", file=sys.stderr)
+    print(f"[sanad] Deduplicated {len(remap)} duplicate node(s) by label.", file=sys.stderr)
     deduped_nodes = list(canonical.values())
     deduped_edges = []
     for edge in edges:
@@ -954,7 +954,7 @@ def build_merge(
         n_nodes = len(to_remove)
         if n_nodes:
             print(
-                f"[graphify] Pruned {n_nodes} node(s) from {n_files} deleted source file(s).",
+                f"[sanad] Pruned {n_nodes} node(s) from {n_files} deleted source file(s).",
                 file=sys.stderr,
             )
 
@@ -965,13 +965,13 @@ def build_merge(
         if edges_to_remove:
             G.remove_edges_from(edges_to_remove)
             print(
-                f"[graphify] Pruned {len(edges_to_remove)} edge(s) from deleted source file(s).",
+                f"[sanad] Pruned {len(edges_to_remove)} edge(s) from deleted source file(s).",
                 file=sys.stderr,
             )
 
         if not n_nodes and not edges_to_remove:
             print(
-                f"[graphify] {n_files} source file(s) deleted since last run — "
+                f"[sanad] {n_files} source file(s) deleted since last run — "
                 f"no matching nodes or edges in graph, already clean.",
                 file=sys.stderr,
             )

@@ -35,8 +35,8 @@ def _load_graph(graph_path: str) -> nx.Graph:
             from graphify.build import graph_has_legacy_ids as _legacy
             if _legacy(data.get("nodes", [])):
                 print(
-                    "[graphify] note: this graph uses the pre-#1504 node-ID scheme; "
-                    "rebuild with `graphify extract --force` for path-qualified IDs.",
+                    "[sanad] note: this graph uses the pre-#1504 node-ID scheme; "
+                    "rebuild with `sanad extract --force` for path-qualified IDs.",
                     file=sys.stderr,
                 )
         except Exception:
@@ -1625,7 +1625,7 @@ def _main(argv: list[str] | None = None) -> None:
     import os
 
     parser = argparse.ArgumentParser(
-        prog="python -m graphify.serve",
+        prog="sanad-mcp",
         description="Serve a graphify knowledge graph over MCP (stdio or Streamable HTTP).",
     )
     parser.add_argument(

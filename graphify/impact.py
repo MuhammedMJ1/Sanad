@@ -2,11 +2,11 @@
 # touch BEFORE the edit, then hold the edit to that prediction AFTER it.
 #
 # Flow (predict -> edit -> check):
-#   1. `graphify predict <targets...>` walks reverse dependencies from the
+#   1. `sanad predict <targets...>` walks reverse dependencies from the
 #      edit targets (via affected.py) and writes an impact contract plus a
 #      baseline snapshot of graph.json.
-#   2. The agent edits code and refreshes the graph (`graphify update .`).
-#   3. `graphify check-impact` diffs baseline vs current graph per file: a
+#   2. The agent edits code and refreshes the graph (`sanad update .`).
+#   3. `sanad check-impact` diffs baseline vs current graph per file: a
 #      changed file OUTSIDE the contract means the edit rippled somewhere the
 #      model never predicted — the classic "I understood this change" lie —
 #      and is reported as a DEVIATION.
@@ -178,8 +178,8 @@ def load_contract(out_dir: Path) -> dict:
     contract_path = out_dir / CONTRACT_FILENAME
     if not contract_path.exists():
         raise FileNotFoundError(
-            f"no impact contract at {contract_path} — run `graphify predict <target>` "
-            f"before editing, then `graphify check-impact` after `graphify update .`"
+            f"no impact contract at {contract_path} — run `sanad predict <target>` "
+            f"before editing, then `sanad check-impact` after `sanad update .`"
         )
     return json.loads(contract_path.read_text(encoding="utf-8"))
 
@@ -188,7 +188,7 @@ def load_baseline(out_dir: Path) -> nx.Graph:
     baseline_path = out_dir / BASELINE_FILENAME
     if not baseline_path.exists():
         raise FileNotFoundError(
-            f"no baseline snapshot at {baseline_path} — run `graphify predict` first"
+            f"no baseline snapshot at {baseline_path} — run `sanad predict` first"
         )
     return load_graph(baseline_path)
 
@@ -213,8 +213,8 @@ def render_prediction(contract: dict) -> str:
             for n in sorted(by_file[f], key=lambda x: (x["depth"], x["label"])):
                 lines.append(f"    - {n['label']} [{n['via_relation']}, depth {n['depth']}]")
     lines.append("")
-    lines.append("Contract saved. After editing, run `graphify update .` then "
-                 "`graphify check-impact`.")
+    lines.append("Contract saved. After editing, run `sanad update .` then "
+                 "`sanad check-impact`.")
     return "\n".join(lines)
 
 

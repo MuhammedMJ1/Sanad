@@ -4353,7 +4353,7 @@ def extract(
         )
         _tot = sum(_no_extractor.values())
         print(
-            f"  warning: {_tot} file(s) are classified as code but graphify has no AST "
+            f"  warning: {_tot} file(s) are classified as code but sanad has no AST "
             f"extractor for their language, so they contributed nothing to the graph: "
             f"{_by_count}. Please open an issue to request support for these (#1689).",
             file=sys.stderr, flush=True,

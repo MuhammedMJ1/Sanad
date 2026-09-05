@@ -236,7 +236,7 @@ def load_graph(path: Path) -> nx.Graph:
     except (json.JSONDecodeError, OSError) as exc:
         raise RuntimeError(
             f"Cannot read graph file {path}: {exc}. "
-            "Re-run 'graphify extract' to regenerate it."
+            "Re-run 'sanad extract' to regenerate it."
         ) from exc
     # Force directed so stored caller→callee direction survives the round-trip;
     # mirrors serve.py and __main__.py (#1174).

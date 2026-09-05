@@ -1,4 +1,4 @@
-"""graphify CLI - `graphify install` sets up the Claude Code skill."""
+"""graphify CLI - `sanad install` sets up the Claude Code skill."""
 
 from __future__ import annotations
 import functools
@@ -177,7 +177,7 @@ def _check_skill_version(skill_dst: Path) -> None:
     except OSError:
         return
     if not skill_exists:
-        print("  warning: skill dir exists but SKILL.md is missing. Run 'graphify install' to repair.")
+        print("  warning: skill dir exists but SKILL.md is missing. Run 'sanad install' to repair.")
         return
     # A progressive SKILL.md links to its references/ sidecar. If the body points
     # at references/ but the dir is gone (manual delete, partial upgrade), the
@@ -187,27 +187,27 @@ def _check_skill_version(skill_dst: Path) -> None:
     except OSError:
         body = ""
     if "references/" in body and not (skill_dst.parent / "references").exists():
-        print("  warning: skill references/ sidecar is missing. Run 'graphify install' to repair.", file=sys.stderr)
+        print("  warning: skill references/ sidecar is missing. Run 'sanad install' to repair.", file=sys.stderr)
     try:
         installed = version_file.read_text(encoding="utf-8").strip()
     except OSError:
         return
     if installed != __version__:
         if _version_tuple(installed) > _version_tuple(__version__):
-            # The skill on disk is NEWER than the running package. `graphify install`
+            # The skill on disk is NEWER than the running package. `sanad install`
             # writes the package's OWN (older) bundled skill and re-stamps the version,
             # so following the old "run install" advice would silently DOWNGRADE the
             # skill. The real fix is to upgrade the package (#1568). Common for a stale
             # `uv tool` CLI, or a contributor whose dev checkout stamped a newer skill.
             print(
-                f"  warning: skill is from graphify {installed}, but the package is "
+                f"  warning: skill is from sanad {installed}, but the package is "
                 f"{__version__} (older). Upgrade the package "
                 f"(e.g. 'uv tool upgrade sanad' or 'pip install -U sanad'); "
-                f"running 'graphify install' would downgrade the skill.",
+                f"running 'sanad install' would downgrade the skill.",
                 file=sys.stderr,
             )
         else:
-            print(f"  warning: skill is from graphify {installed}, package is {__version__}. Run 'graphify install' to update.", file=sys.stderr)
+            print(f"  warning: skill is from sanad {installed}, package is {__version__}. Run 'sanad install' to update.", file=sys.stderr)
 
 
 def _version_tuple(version: str) -> tuple[int, ...]:
@@ -248,7 +248,7 @@ def _version_tuple(version: str) -> tuple[int, ...]:
 
 
 # PreToolUse nudge payloads, emitted verbatim by the shell-agnostic
-# `graphify hook-guard` subcommand (see _run_hook_guard). The previous hooks
+# `sanad hook-guard` subcommand (see _run_hook_guard). The previous hooks
 # inlined POSIX bash (case/esac, [ -f ], single-quoted echo) which Windows
 # cmd.exe/PowerShell cannot parse, so on Windows the hook failed and the nudge
 # silently vanished — users had to invoke /graphify by hand (#522). Moving the
@@ -295,7 +295,7 @@ def _version_tuple(version: str) -> tuple[int, ...]:
 
 # Gemini CLI BeforeTool hook nudge text. The hook always returns
 # {"decision":"allow"} (never blocks a tool) and appends this as additionalContext
-# when a graph exists. Emitted by `graphify hook-guard gemini`. The old hook was a
+# when a graph exists. Emitted by `sanad hook-guard gemini`. The old hook was a
 # `python -c "..."` one-liner that depended on a bare `python` on PATH (often
 # `python`/`py` or absent on Windows) and embedded backticks + escaped quotes that
 # Windows PowerShell mangles (#522 follow-up); the subcommand form has no such
@@ -472,11 +472,11 @@ def main() -> None:
         return
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "-?"):
-        print("Usage: graphify <command>")
+        print("Usage: sanad <command>")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codebuddy|codex|opencode|aider|amp|agents|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi|devin)")
-        print("  uninstall               remove graphify from all detected platforms in one shot")
+        print("  uninstall               remove sanad from all detected platforms in one shot")
         print("    --purge                 also delete graphify-out/ directory")
         print("  path \"A\" \"B\"            shortest path between two nodes in graph.json")
         print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
@@ -520,7 +520,7 @@ def main() -> None:
         print("    --depth N               reverse-dependency hops to walk (default 2)")
         print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
         print("    --json                  emit the contract as JSON")
-        print("  check-impact            after editing + `graphify update .`: diff reality vs contract")
+        print("  check-impact            after editing + `sanad update .`: diff reality vs contract")
         print("    --strict                exit 3 on DEVIATION (gate mode)")
         print("    --json                  emit machine-readable report")
         print("  verify \"<text>\"         fact-check structural claims in text against graph.json")
@@ -712,7 +712,7 @@ def main() -> None:
     # "install"/"uninstall" which have their own per-subcommand help handlers.
     _FREE_TEXT_CMDS = {"query", "explain", "path", "save-result", "install", "uninstall"}
     if cmd not in _FREE_TEXT_CMDS and any(a in {"-h", "--help", "-?"} for a in sys.argv[2:]):
-        print(f"Run 'graphify --help' for full usage.")
+        print(f"Run 'sanad --help' for full usage.")
         return
 
     if dispatch_install_cli(cmd):
