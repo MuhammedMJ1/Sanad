@@ -1,0 +1,152 @@
+{
+ "jpeg": {
+  "acme|ai-200": {
+   "features": {
+    "app_segment_order": {
+     "APP1:Exif": 8
+    },
+    "dqt_hash": {
+     "4cea142cfe9a": 8
+    },
+    "exif_present": {
+     "True": 8
+    },
+    "makernote_present": {
+     "True": 8
+    },
+    "progressive": {
+     "False": 8
+    },
+    "subsampling": {
+     "2x2": 8
+    },
+    "thumbnail_present": {
+     "True": 8
+    }
+   },
+   "n": 8
+  }
+ },
+ "ooxml": {
+  "acme": {
+   "features": {
+    "compression_methods": {
+     "8": 8
+    },
+    "entry_order": {
+     "[Content_Types].xml>_rels/.rels>word/document.xml>word/_rels/document.xml.rels>word/styles.xml>docProps/core.xml>docProps/app.xml": 8
+    },
+    "has_app_xml": {
+     "True": 8
+    },
+    "has_core_xml": {
+     "True": 8
+    },
+    "timestamps_uniform": {
+     "True": 8
+    },
+    "uniform_timestamp": {
+     "[1980, 1, 1, 0, 0, 0]": 8
+    },
+    "zip_comment": {
+     "False": 8
+    }
+   },
+   "n": 8
+  }
+ },
+ "pdf": {
+  "pikepdf": {
+   "features": {
+    "binary_comment": {
+     "True": 8
+    },
+    "content_stream_layout": {
+     "single": 8
+    },
+    "date_dialect_creation": {
+     "D|s|+HH'mm'": 8
+    },
+    "date_dialect_mod": {
+     "D|s|+HH'mm'": 8
+    },
+    "filters": {
+     "FlateDecode": 8
+    },
+    "has_objstm": {
+     "False": 8
+    },
+    "header_version": {
+     "1.3": 8
+    },
+    "id_present": {
+     "True": 8
+    },
+    "linearized": {
+     "False": 8
+    },
+    "xmp_present": {
+     "True": 8
+    },
+    "xref_style_first": {
+     "table": 8
+    }
+   },
+   "n": 8
+  },
+  "plainpdf": {
+   "features": {
+    "binary_comment": {
+     "False": 8
+    },
+    "content_stream_layout": {
+     "single": 8
+    },
+    "date_dialect_creation": {
+     "D|s|Z": 8
+    },
+    "date_dialect_mod": {
+     "D|s|Z": 8
+    },
+    "filters": {
+     "none": 8
+    },
+    "has_objstm": {
+     "False": 8
+    },
+    "header_version": {
+     "1.4": 8
+    },
+    "id_present": {
+     "False": 8
+    },
+    "linearized": {
+     "False": 8
+    },
+    "xmp_present": {
+     "False": 8
+    },
+    "xref_style_first": {
+     "table": 8
+    }
+   },
+   "n": 8
+  }
+ },
+ "png": {
+  "acme": {
+   "features": {
+    "bit_depth_color": {
+     "8/2": 8
+    },
+    "chunk_order": {
+     "IHDR>tEXt>tIME>IDAT>IEND": 8
+    },
+    "has_time": {
+     "True": 8
+    }
+   },
+   "n": 8
+  }
+ }
+}
