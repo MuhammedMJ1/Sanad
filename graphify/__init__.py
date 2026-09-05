@@ -2,7 +2,7 @@
 
 
 def __getattr__(name):
-    # Lazy imports so `graphify install` works before heavy deps are in place.
+    # Lazy imports so `sanad install` works before heavy deps are in place.
     _map = {
         "extract": ("graphify.extract", "extract"),
         "collect_files": ("graphify.extract", "collect_files"),

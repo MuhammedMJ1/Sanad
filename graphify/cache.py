@@ -92,7 +92,7 @@ def _body_content(content: bytes) -> bytes:
 # size+mtime_ns are unchanged — same trade-off as make(1).
 # Correctness risks: `touch` causes a harmless extra re-hash; same-size edits
 # within NFS second-resolution mtime have a 1-second window (same as make).
-# Use `graphify extract --force` to bypass when needed.
+# Use `sanad extract --force` to bypass when needed.
 _stat_index: dict[str, dict] = {}
 _stat_index_root: Path | None = None
 _stat_index_dirty: bool = False

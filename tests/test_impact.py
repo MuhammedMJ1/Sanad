@@ -199,7 +199,7 @@ def test_contract_and_baseline_round_trip(tmp_path):
 
 
 def test_load_contract_missing_raises(tmp_path):
-    with pytest.raises(FileNotFoundError, match="graphify predict"):
+    with pytest.raises(FileNotFoundError, match="sanad predict"):
         load_contract(tmp_path)
     with pytest.raises(FileNotFoundError):
         load_baseline(tmp_path)

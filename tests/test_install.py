@@ -173,7 +173,7 @@ def test_install_help_does_not_install_default(tmp_path, monkeypatch, capsys):
     with patch("graphify.__main__.Path.home", return_value=tmp_path):
         main()
     out = capsys.readouterr().out
-    assert "Usage: graphify install" in out
+    assert "Usage: sanad install" in out
     assert "opencode" in out
     assert not (tmp_path / ".claude").exists()
     assert not (tmp_path / ".config").exists()

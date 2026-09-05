@@ -510,7 +510,7 @@ def _node_community_map(graph_data: dict) -> dict[str, int]:
             out[str(node_id)] = int(cid)
         except (TypeError, ValueError):
             print(
-                f"[graphify watch] Skipping node with invalid community id: "
+                f"[sanad watch] Skipping node with invalid community id: "
                 f"node_id={node_id!r} community={cid!r}",
                 file=sys.stderr,
             )
@@ -621,7 +621,7 @@ def _check_shrink(
     belonged to one of those files (a symbol removed from a re-extracted file) or
     carries no source_file. Only an unexplained loss (a node from a file we did
     NOT touch — e.g. a dropped semantic/doc node) refuses the write. This lets a
-    plain ``graphify update`` after deleting a function refresh the graph without
+    plain ``sanad update`` after deleting a function refresh the graph without
     ``--force`` (#1116 left stale nodes write-blocked even though build dropped them).
     """
     if force or not existing_data or had_explicit_deletions:
@@ -645,7 +645,7 @@ def _check_shrink(
     if tmp is not None:
         tmp.unlink(missing_ok=True)
     print(
-        f"[graphify] WARNING: new graph has {len(new_nodes)} nodes but existing "
+        f"[sanad] WARNING: new graph has {len(new_nodes)} nodes but existing "
         f"graph.json has {len(existing_nodes)}. Refusing to overwrite — you may be "
         f"missing chunk files from a previous session. "
         f"Pass --force to override.",
@@ -687,7 +687,7 @@ def _stabilize_rebuild_cwd(watch_path: Path) -> bool:
         return True
     except FileNotFoundError:
         print(
-            "[graphify watch] Rebuild failed: current working directory "
+            "[sanad watch] Rebuild failed: current working directory "
             "no longer exists and GRAPHIFY_REPO_ROOT is not set."
         )
         return False
@@ -719,7 +719,7 @@ def _rebuild_code(
     the rebuild so concurrent post-commit hooks across multiple repos do not
     pile up. Returns False with a log line if the lock is held. Pass
     ``block_on_lock=True`` to wait instead of skip (used by the interactive
-    ``graphify update`` CLI).
+    ``sanad update`` CLI).
 
     ``no_cluster`` skips community detection and writes raw merged extraction
     JSON to graphify-out/graph.json (mirrors ``extract --no-cluster``).
@@ -741,7 +741,7 @@ def _rebuild_code(
             _queue_pending(out, list(changed_paths))
         with _rebuild_lock(out, blocking=block_on_lock) as got:
             if not got:
-                print("[graphify watch] Rebuild already in progress for "
+                print("[sanad watch] Rebuild already in progress for "
                       f"{watch_path.resolve()} - changes queued.")
                 return False
             # Lock acquired. Drain anything queued by earlier contenders
@@ -805,7 +805,7 @@ def _rebuild_code(
 
         existing_graph = out / "graph.json"
         if not code_files and not existing_graph.exists():
-            print("[graphify watch] No code files found - nothing to rebuild.")
+            print("[sanad watch] No code files found - nothing to rebuild.")
             return False
 
         # Incremental path: when the caller passed an explicit change list,
@@ -856,7 +856,7 @@ def _rebuild_code(
                     # Evict preserved nodes that still claim this source path.
                     _add_deleted_source(deleted_in_root)
             if not wanted and not deleted_paths:
-                print("[graphify watch] No tracked code files in change set - skipping rebuild.")
+                print("[sanad watch] No tracked code files in change set - skipping rebuild.")
                 return True
             extract_targets = wanted
         else:
@@ -953,14 +953,14 @@ def _rebuild_code(
                 flag.unlink()
 
             if same_graph:
-                print("[graphify watch] No code-graph changes detected (--no-cluster); outputs left untouched.")
+                print("[sanad watch] No code-graph changes detected (--no-cluster); outputs left untouched.")
             else:
                 print(
-                    "[graphify watch] Rebuilt (no clustering): "
+                    "[sanad watch] Rebuilt (no clustering): "
                     f"{len(candidate_graph_data.get('nodes', []))} nodes, "
                     f"{len(candidate_graph_data.get('links', []))} edges"
                 )
-                print(f"[graphify watch] graph.json updated in {out}")
+                print(f"[sanad watch] graph.json updated in {out}")
             return True
 
         detection = {
@@ -988,7 +988,7 @@ def _rebuild_code(
                 flag = out / "needs_update"
                 if flag.exists():
                     flag.unlink()
-                print("[graphify watch] No code-graph topology changes detected; outputs left untouched.")
+                print("[sanad watch] No code-graph topology changes detected; outputs left untouched.")
                 return True
 
         communities = cluster(G)
@@ -1041,7 +1041,7 @@ def _rebuild_code(
         no_change = same_graph and same_report
         if no_change:
             graph_tmp.unlink(missing_ok=True)
-            print("[graphify watch] No code-graph changes detected; graph.json/GRAPH_REPORT.md left untouched.")
+            print("[sanad watch] No code-graph changes detected; graph.json/GRAPH_REPORT.md left untouched.")
         else:
             if not _check_shrink(
                 force, existing_graph_data, candidate_graph_data,
@@ -1072,7 +1072,7 @@ def _rebuild_code(
                 to_html(G, communities, str(out / "graph.html"), community_labels=labels or None)
                 html_written = True
             except ValueError as viz_err:
-                print(f"[graphify watch] Skipped graph.html: {viz_err}")
+                print(f"[sanad watch] Skipped graph.html: {viz_err}")
                 stale = out / "graph.html"
                 if stale.exists():
                     stale.unlink()
@@ -1092,7 +1092,7 @@ def _rebuild_code(
                         verbose=False,
                     )
             except Exception as cf_err:
-                print(f"[graphify watch] callflow HTML update skipped: {cf_err}")
+                print(f"[sanad watch] callflow HTML update skipped: {cf_err}")
 
         # clear stale needs_update flag if present
         flag = out / "needs_update"
@@ -1100,16 +1100,16 @@ def _rebuild_code(
             flag.unlink()
 
         if not no_change:
-            print(f"[graphify watch] Rebuilt: {G.number_of_nodes()} nodes, "
+            print(f"[sanad watch] Rebuilt: {G.number_of_nodes()} nodes, "
                   f"{G.number_of_edges()} edges, {len(communities)} communities")
             products = "graph.json" + (", graph.html" if html_written else "") + " and GRAPH_REPORT.md"
             if callflow_files:
                 products += f", {len(callflow_files)} callflow HTML"
-            print(f"[graphify watch] {products} updated in {out}")
+            print(f"[sanad watch] {products} updated in {out}")
         return True
 
     except Exception as exc:
-        print(f"[graphify watch] Rebuild failed: {exc}")
+        print(f"[sanad watch] Rebuild failed: {exc}")
         return False
 
 
@@ -1123,8 +1123,8 @@ def check_update(watch_path: Path) -> bool:
     """
     flag = Path(watch_path) / _GRAPHIFY_OUT / "needs_update"
     if flag.exists():
-        print(f"[graphify check-update] Pending non-code changes in {watch_path}.")
-        print("[graphify check-update] Run `/graphify --update` to apply semantic re-extraction.")
+        print(f"[sanad check-update] Pending non-code changes in {watch_path}.")
+        print("[sanad check-update] Run `/graphify --update` to apply semantic re-extraction.")
     return True
 
 
@@ -1133,10 +1133,10 @@ def _notify_only(watch_path: Path) -> None:
     flag = watch_path / _GRAPHIFY_OUT / "needs_update"
     flag.parent.mkdir(parents=True, exist_ok=True)
     flag.write_text("1", encoding="utf-8")
-    print(f"\n[graphify watch] New or changed files detected in {watch_path}")
-    print("[graphify watch] Non-code files changed - semantic re-extraction requires LLM.")
-    print("[graphify watch] Run `/graphify --update` in Claude Code to update the graph.")
-    print(f"[graphify watch] Flag written to {flag}")
+    print(f"\n[sanad watch] New or changed files detected in {watch_path}")
+    print("[sanad watch] Non-code files changed - semantic re-extraction requires LLM.")
+    print("[sanad watch] Run `/graphify --update` in Claude Code to update the graph.")
+    print(f"[sanad watch] Flag written to {flag}")
 
 
 def _has_non_code(changed_paths: list[Path]) -> bool:
@@ -1207,10 +1207,10 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
     observer.schedule(handler, str(watch_path), recursive=True)
     observer.start()
 
-    print(f"[graphify watch] Watching {watch_path.resolve()} - press Ctrl+C to stop")
-    print(f"[graphify watch] Code changes rebuild graph automatically. "
+    print(f"[sanad watch] Watching {watch_path.resolve()} - press Ctrl+C to stop")
+    print(f"[sanad watch] Code changes rebuild graph automatically. "
           f"Doc/image changes require /graphify --update.")
-    print(f"[graphify watch] Debounce: {debounce}s")
+    print(f"[sanad watch] Debounce: {debounce}s")
 
     try:
         while True:
@@ -1219,7 +1219,7 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
                 pending = False
                 batch = list(changed)
                 changed.clear()
-                print(f"\n[graphify watch] {len(batch)} file(s) changed")
+                print(f"\n[sanad watch] {len(batch)} file(s) changed")
                 has_non_code = _has_non_code(batch)
                 has_code = any(p.suffix.lower() in _CODE_EXTENSIONS for p in batch)
                 if has_code:
@@ -1227,7 +1227,7 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
                 if has_non_code:
                     _notify_only(watch_path)
     except KeyboardInterrupt:
-        print("\n[graphify watch] Stopped.")
+        print("\n[sanad watch] Stopped.")
     finally:
         observer.stop()
         observer.join()

@@ -253,8 +253,8 @@ def test_extract_timing_flag_emits_stage_timings(monkeypatch, tmp_path, capsys):
         mainmod.main()
     assert exc.value.code == 0
     err = capsys.readouterr().err
-    assert "[graphify timing] detect:" in err
-    assert "[graphify timing] total:" in err
+    assert "[sanad timing] detect:" in err
+    assert "[sanad timing] total:" in err
 
     # without --timing => no timing lines
     monkeypatch.setattr(

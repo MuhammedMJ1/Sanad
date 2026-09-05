@@ -1129,7 +1129,7 @@ def detect(root: Path, *, follow_symlinks: bool | None = None, google_workspace:
         target = getattr(err, "filename", None) or "<unknown>"
         walk_errors.append(f"{target}: {err}")
         print(
-            f"[graphify] WARNING: could not scan {target} ({err}); "
+            f"[sanad] WARNING: could not scan {target} ({err}); "
             f"its files are missing from this run's enumeration.",
             file=_sys.stderr,
         )
@@ -1406,10 +1406,10 @@ def save_manifest(
 ) -> None:
     """Save current file mtimes + content hashes for change detection.
 
-    kind="ast"      — written by `graphify update` (AST-only rebuild). Stamps
+    kind="ast"      — written by `sanad update` (AST-only rebuild). Stamps
                       ast_hash; preserves an existing semantic_hash only when
                       the file content is unchanged (mtime + hash match).
-    kind="semantic" — written by `graphify extract` after semantic extraction.
+    kind="semantic" — written by `sanad extract` after semantic extraction.
                       Stamps semantic_hash; preserves existing ast_hash.
     kind="both"     — full pipeline: stamps both hashes (default).
 
@@ -1491,11 +1491,11 @@ def detect_incremental(
 
     kind="semantic" (default for extract): a file is "changed" when its
         semantic_hash is missing or its content has changed since the last
-        semantic extraction pass. Use this for `graphify extract` so that
-        files touched by `graphify update` (AST-only) are re-extracted
+        semantic extraction pass. Use this for `sanad extract` so that
+        files touched by `sanad update` (AST-only) are re-extracted
         semantically.
     kind="ast": a file is "changed" when its ast_hash is missing or its
-        content has changed. Use this for `graphify update`.
+        content has changed. Use this for `sanad update`.
 
     Fast path: mtime unchanged + hash matches → unchanged (free, no disk IO
     beyond stat). Slow path: mtime bumped → compare MD5 against the relevant

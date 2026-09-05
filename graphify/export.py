@@ -89,11 +89,11 @@ def backup_if_protected(out_dir: Path) -> "Path | None":
                 except Exception:
                     pass
         if copied:
-            print(f"[graphify] backed up {reason} graph ({copied} files) -> {backup_dir.name}/")
+            print(f"[sanad] backed up {reason} graph ({copied} files) -> {backup_dir.name}/")
         return backup_dir
     except Exception as exc:
         import sys
-        print(f"[graphify] warning: backup failed ({exc}) - continuing with overwrite", file=sys.stderr)
+        print(f"[sanad] warning: backup failed ({exc}) - continuing with overwrite", file=sys.stderr)
         return None
 
 def _obsidian_tag(name: str) -> str:
@@ -216,7 +216,7 @@ def to_json(G: nx.Graph, communities: dict[int, list[str]], output_path: str, *,
                     # graph.json would let a partial rebuild clobber a good one.
                     import sys as _sys
                     print(
-                        f"[graphify] WARNING: existing {existing_path} could not be "
+                        f"[sanad] WARNING: existing {existing_path} could not be "
                         f"read to verify the new graph is not smaller ({exc}). "
                         f"Refusing to overwrite; pass force=True to override.",
                         file=_sys.stderr,
@@ -226,7 +226,7 @@ def to_json(G: nx.Graph, communities: dict[int, list[str]], output_path: str, *,
             if new_n < existing_n:
                 import sys as _sys
                 print(
-                    f"[graphify] WARNING: new graph has {new_n} nodes but existing "
+                    f"[sanad] WARNING: new graph has {new_n} nodes but existing "
                     f"graph.json has {existing_n} (net -{existing_n - new_n}). "
                     f"Refusing to overwrite. Possible causes: missing chunk files from "
                     f"a previous session, or fuzzy dedup collapsed same-named symbols "
@@ -717,7 +717,7 @@ def to_obsidian(
     if _skipped:
         shown = ", ".join(_skipped[:5]) + (f" (+{len(_skipped) - 5} more)" if len(_skipped) > 5 else "")
         print(
-            f"[graphify] WARNING: skipped {len(_skipped)} pre-existing file(s) graphify "
+            f"[sanad] WARNING: skipped {len(_skipped)} pre-existing file(s) graphify "
             f"did not create, to avoid overwriting your notes: {shown}. "
             f"Export into an empty directory (or the default graphify-out/obsidian) "
             f"to get the full vault.",

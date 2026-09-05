@@ -287,7 +287,7 @@ def save_query_result(
     the system grows smarter from both what you add AND what you ask.
 
     ``outcome`` (one of :data:`OUTCOMES`) and ``correction`` are optional work-memory
-    signals: they are written both to the frontmatter (so `graphify reflect` can
+    signals: they are written both to the frontmatter (so `sanad reflect` can
     aggregate them deterministically) and to an ``## Outcome`` body section (so the
     signal round-trips into the graph on the next semantic re-extraction).
     """
@@ -350,4 +350,4 @@ if __name__ == "__main__":
     parser.add_argument("--contributor", help="Contributor name for team graphs")
     args = parser.parse_args()
     out = ingest(args.url, Path(args.target_dir), author=args.author, contributor=args.contributor)
-    print(f"Ready for graphify: {out}")
+    print(f"Ready for sanad: {out}")

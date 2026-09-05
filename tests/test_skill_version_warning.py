@@ -38,7 +38,7 @@ def test_skill_older_than_package_recommends_install(tmp_path, monkeypatch, caps
     skill_dst = _make_skill(tmp_path, "0.8.27")
     mainmod._check_skill_version(skill_dst)
     err = capsys.readouterr().err
-    assert "Run 'graphify install' to update" in err
+    assert "Run 'sanad install' to update" in err
     assert "downgrade" not in err
 
 
@@ -48,7 +48,7 @@ def test_skill_newer_than_package_recommends_upgrade_not_install(tmp_path, monke
     mainmod._check_skill_version(skill_dst)
     err = capsys.readouterr().err
     # must NOT tell the user to run install (that would downgrade the skill)
-    assert "Run 'graphify install' to update" not in err
+    assert "Run 'sanad install' to update" not in err
     assert "downgrade" in err
     assert "upgrade" in err.lower()
 

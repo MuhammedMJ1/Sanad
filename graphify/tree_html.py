@@ -19,7 +19,7 @@ Tree-data shape:
       "children": [ { "name", "total_count", "children": [...] }, ... ]
     }
 
-CLI: ``graphify tree [--graph PATH] [--output HTML] [--root PATH]
+CLI: ``sanad tree [--graph PATH] [--output HTML] [--root PATH]
 [--max-children N] [--label NAME]``.
 
 Implementation notes:

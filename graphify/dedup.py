@@ -235,12 +235,12 @@ def deduplicate_entities(
             new_sf = node.get("source_file") or ""
             if existing_sf != new_sf:
                 print(
-                    f"[graphify] WARNING: node '{nid}' from '{new_sf}' collides with "
+                    f"[sanad] WARNING: node '{nid}' from '{new_sf}' collides with "
                     f"node from '{existing_sf}' — the second node will be dropped. "
                     f"This is a cross-chunk ID collision caused by two files with the "
                     f"same name in different directories. To avoid data loss, run "
-                    f"'graphify extract' per subfolder and merge with "
-                    f"'graphify merge-graphs'.",
+                    f"'sanad extract' per subfolder and merge with "
+                    f"'sanad merge-graphs'.",
                     file=sys.stderr,
                 )
     unique_nodes = list(seen_ids.values())
@@ -416,7 +416,7 @@ def deduplicate_entities(
         return unique_nodes, edges
 
     total = len(remap)
-    msg = f"[graphify] Deduplicated {total} node(s)"
+    msg = f"[sanad] Deduplicated {total} node(s)"
     if exact_merges:
         msg += f" ({exact_merges} exact"
         if fuzzy_merges:
@@ -474,11 +474,11 @@ def _llm_tiebreak(
     try:
         from graphify.llm import BACKENDS, _format_backend_env_keys, _get_backend_api_key
         if backend not in BACKENDS:
-            print(f"[graphify] --dedup-llm: unknown backend {backend!r}, skipping LLM tiebreaker.", flush=True)
+            print(f"[sanad] --dedup-llm: unknown backend {backend!r}, skipping LLM tiebreaker.", flush=True)
             return
         if not _get_backend_api_key(backend):
             env_keys = _format_backend_env_keys(backend)
-            print(f"[graphify] --dedup-llm: {env_keys} not set, skipping LLM tiebreaker.", flush=True)
+            print(f"[sanad] --dedup-llm: {env_keys} not set, skipping LLM tiebreaker.", flush=True)
             return
     except ImportError:
         return
@@ -527,7 +527,7 @@ def _llm_tiebreak(
         # didn't exist in `graphify.llm` at all, so `--dedup-llm` was a no-op.
         # Surface the import failure so future regressions are visible.
         print(
-            f"[graphify] --dedup-llm: cannot import _call_llm ({exc}); skipping LLM tiebreaker.",
+            f"[sanad] --dedup-llm: cannot import _call_llm ({exc}); skipping LLM tiebreaker.",
             flush=True,
         )
         return
@@ -565,4 +565,4 @@ def _llm_tiebreak(
                         uf.union(winner["id"], a["id"])
                         uf.union(winner["id"], b["id"])
         except Exception as exc:
-            print(f"[graphify] --dedup-llm batch failed: {exc}", flush=True)
+            print(f"[sanad] --dedup-llm batch failed: {exc}", flush=True)

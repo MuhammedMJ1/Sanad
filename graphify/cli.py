@@ -55,7 +55,7 @@ def _default_graph_path() -> str:
 class _StageTimer:
     """Print per-stage wall-clock timings to stderr when --timing is set (#1490).
 
-    Monotonic (perf_counter), diagnostic-only: emits ``[graphify timing] <stage>:
+    Monotonic (perf_counter), diagnostic-only: emits ``[sanad timing] <stage>:
     N.Ns`` after each stage and a final total. Off by default, so normal output is
     byte-identical and machine-read stdout is untouched.
     """
@@ -70,12 +70,12 @@ class _StageTimer:
     def mark(self, stage: str) -> None:
         now = self._now()
         if self.enabled:
-            print(f"[graphify timing] {stage}: {now - self._last:.1f}s", file=sys.stderr)
+            print(f"[sanad timing] {stage}: {now - self._last:.1f}s", file=sys.stderr)
         self._last = now
 
     def total(self) -> None:
         if self.enabled:
-            print(f"[graphify timing] total: {self._now() - self.start:.1f}s", file=sys.stderr)
+            print(f"[sanad timing] total: {self._now() - self.start:.1f}s", file=sys.stderr)
 def _enforce_graph_size_cap_or_exit(gp: Path) -> None:
     """Reject oversized graph files before parsing (CLI exit-on-fail flavor).
 
@@ -236,7 +236,7 @@ def dispatch_command(cmd: str) -> None:
         elif subcmd == "show":
             name = sys.argv[3] if len(sys.argv) > 3 else ""
             if not name:
-                print("Usage: graphify provider show <name>", file=sys.stderr)
+                print("Usage: sanad provider show <name>", file=sys.stderr)
                 sys.exit(1)
             existing = {}
             if global_path.is_file():
@@ -253,7 +253,7 @@ def dispatch_command(cmd: str) -> None:
             args = sys.argv[3:]
             name = args[0] if args and not args[0].startswith("-") else ""
             if not name:
-                print("Usage: graphify provider add <name> --base-url URL --default-model MODEL --env-key KEY", file=sys.stderr)
+                print("Usage: sanad provider add <name> --base-url URL --default-model MODEL --env-key KEY", file=sys.stderr)
                 sys.exit(1)
             if name in BACKENDS:
                 print(f"Error: '{name}' is a built-in provider and cannot be overridden.", file=sys.stderr)
@@ -306,12 +306,12 @@ def dispatch_command(cmd: str) -> None:
                 "temperature": 0,
             }
             global_path.write_text(_json.dumps(existing, indent=2) + "\n", encoding="utf-8")
-            print(f"Provider '{name}' added. Use with: graphify extract . --backend {name}")
+            print(f"Provider '{name}' added. Use with: sanad extract . --backend {name}")
 
         elif subcmd == "remove":
             name = sys.argv[3] if len(sys.argv) > 3 else ""
             if not name:
-                print("Usage: graphify provider remove <name>", file=sys.stderr)
+                print("Usage: sanad provider remove <name>", file=sys.stderr)
                 sys.exit(1)
             existing = {}
             if global_path.is_file():
@@ -327,7 +327,7 @@ def dispatch_command(cmd: str) -> None:
             print(f"Provider '{name}' removed.")
 
         else:
-            print("Usage: graphify provider [add|list|show|remove]", file=sys.stderr)
+            print("Usage: sanad provider [add|list|show|remove]", file=sys.stderr)
             if subcmd:
                 sys.exit(1)
     elif cmd == "prs":
@@ -348,11 +348,11 @@ def dispatch_command(cmd: str) -> None:
         elif subcmd == "status":
             print(hook_status(Path(".")))
         else:
-            print("Usage: graphify hook [install|uninstall|status]", file=sys.stderr)
+            print("Usage: sanad hook [install|uninstall|status]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "query":
         if len(sys.argv) < 3:
-            print("Usage: graphify query \"<question>\" [--dfs] [--context C] [--budget N] [--graph path]", file=sys.stderr)
+            print("Usage: sanad query \"<question>\" [--dfs] [--context C] [--budget N] [--graph path]", file=sys.stderr)
             sys.exit(1)
         from graphify.serve import _query_graph_text
         from graphify.security import sanitize_label
@@ -415,8 +415,8 @@ def dispatch_command(cmd: str) -> None:
                 from graphify.build import graph_has_legacy_ids as _legacy
                 if _legacy(_raw.get("nodes", [])):
                     print(
-                        "[graphify] note: this graph uses the pre-#1504 node-ID scheme; "
-                        "rebuild with `graphify extract --force` to get path-qualified IDs "
+                        "[sanad] note: this graph uses the pre-#1504 node-ID scheme; "
+                        "rebuild with `sanad extract --force` to get path-qualified IDs "
                         "(fixes same-name-file collisions).",
                         file=sys.stderr,
                     )
@@ -449,7 +449,7 @@ def dispatch_command(cmd: str) -> None:
         print(_result)
     elif cmd == "affected":
         if len(sys.argv) < 3:
-            print("Usage: graphify affected \"<node-or-label>\" [--relation R] [--depth N] [--graph path]", file=sys.stderr)
+            print("Usage: sanad affected \"<node-or-label>\" [--relation R] [--depth N] [--graph path]", file=sys.stderr)
             sys.exit(1)
         from graphify.affected import DEFAULT_AFFECTED_RELATIONS, format_affected, load_graph
         query = sys.argv[2]
@@ -512,7 +512,7 @@ def dispatch_command(cmd: str) -> None:
         #                      [--outcome useful|dead_end|corrected] [--correction TEXT]
         import argparse as _ap
 
-        p = _ap.ArgumentParser(prog="graphify save-result")
+        p = _ap.ArgumentParser(prog="sanad save-result")
         p.add_argument("--question", required=True)
         p.add_argument("--answer", default=None)
         p.add_argument("--answer-file", dest="answer_file", default=None)
@@ -541,7 +541,7 @@ def dispatch_command(cmd: str) -> None:
     elif cmd == "reflect":
         import argparse as _ap
 
-        p = _ap.ArgumentParser(prog="graphify reflect")
+        p = _ap.ArgumentParser(prog="sanad reflect")
         p.add_argument("--memory-dir", default=str(Path(_GRAPHIFY_OUT) / "memory"))
         p.add_argument(
             "--out",
@@ -598,7 +598,7 @@ def dispatch_command(cmd: str) -> None:
     elif cmd == "path":
         if len(sys.argv) < 4:
             print(
-                'Usage: graphify path "<source>" "<target>" [--graph path]',
+                'Usage: sanad path "<source>" "<target>" [--graph path]',
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -732,7 +732,7 @@ def dispatch_command(cmd: str) -> None:
                 sys.exit(1)
         if sub not in ("add", "list", "show", "recall", "reverify", "forget"):
             print(
-                "Usage: graphify memory add \"<insight>\" | list [--all] | show <id>\n"
+                "Usage: sanad memory add \"<insight>\" | list [--all] | show <id>\n"
                 "                | recall \"<query>\" | reverify | forget <id>",
                 file=sys.stderr,
             )
@@ -747,7 +747,7 @@ def dispatch_command(cmd: str) -> None:
         if sub == "add":
             insight = " ".join(rest).strip()
             if not insight:
-                print('Usage: graphify memory add "<insight>"', file=sys.stderr)
+                print('Usage: sanad memory add "<insight>"', file=sys.stderr)
                 sys.exit(1)
             G = _load_mem_graph(gp)
             status, entry, verdicts = admit(G, mem, insight, source="manual")
@@ -765,7 +765,7 @@ def dispatch_command(cmd: str) -> None:
                 print(render_entry(e))
         elif sub == "show":
             if not rest:
-                print("Usage: graphify memory show <id>", file=sys.stderr)
+                print("Usage: sanad memory show <id>", file=sys.stderr)
                 sys.exit(1)
             e = next((x for x in mem.get("entries", []) if x.get("id") == rest[0]), None)
             if e is None:
@@ -775,7 +775,7 @@ def dispatch_command(cmd: str) -> None:
         elif sub == "recall":
             query = " ".join(rest).strip()
             if not query:
-                print('Usage: graphify memory recall "<query>"', file=sys.stderr)
+                print('Usage: sanad memory recall "<query>"', file=sys.stderr)
                 sys.exit(1)
             hits = recall(mem, query, include_stale=include_stale)
             if not hits:
@@ -789,7 +789,7 @@ def dispatch_command(cmd: str) -> None:
             print(render_reverify(report))
         elif sub == "forget":
             if not rest:
-                print("Usage: graphify memory forget <id>", file=sys.stderr)
+                print("Usage: sanad memory forget <id>", file=sys.stderr)
                 sys.exit(1)
             if forget(mem, rest[0]):
                 save_memory(gp.parent, mem)
@@ -859,7 +859,7 @@ def dispatch_command(cmd: str) -> None:
                 sys.exit(1)
         if not targets:
             print(
-                'Usage: graphify tunnel "<file-or-symbol>" [more targets...]\n'
+                'Usage: sanad tunnel "<file-or-symbol>" [more targets...]\n'
                 "                [--draft code.py --at rel/path.py] [--depth N]\n"
                 "                [--no-tests] [--timeout S] [--keep] [--json]",
                 file=sys.stderr,
@@ -963,7 +963,7 @@ def dispatch_command(cmd: str) -> None:
             else:
                 code = sys.stdin.read()
             if not code.strip():
-                print("Usage: graphify lock-check <file.py>  (or pipe code via stdin)", file=sys.stderr)
+                print("Usage: sanad lock-check <file.py>  (or pipe code via stdin)", file=sys.stderr)
                 sys.exit(1)
             violations = check_python(code, space)
             print(render_check_report(violations))
@@ -988,7 +988,7 @@ def dispatch_command(cmd: str) -> None:
         else:  # lock-gen
             task = " ".join(positionals).strip()
             if not task:
-                print('Usage: graphify lock-gen "<task>" [--rounds N] [--backend B] [--model M]',
+                print('Usage: sanad lock-gen "<task>" [--rounds N] [--backend B] [--model M]',
                       file=sys.stderr)
                 sys.exit(1)
             from graphify.llm import detect_backend, estimate_cost
@@ -1130,7 +1130,7 @@ def dispatch_command(cmd: str) -> None:
         ]
         if not any(ln.strip() for ln in op_lines):
             print(
-                'Usage: graphify ops "<op>"  (or pipe ops, one per line)\n'
+                'Usage: sanad ops "<op>"  (or pipe ops, one per line)\n'
                 "       graphify ops --help-ops   for the op language\n"
                 "       graphify ops --new ...    to reset the session",
                 file=sys.stderr,
@@ -1192,7 +1192,7 @@ def dispatch_command(cmd: str) -> None:
         question = " ".join(question_parts).strip()
         if not question:
             print(
-                'Usage: graphify think "<question>" [--budget N] [--backend B] '
+                'Usage: sanad think "<question>" [--budget N] [--backend B] '
                 "[--model M] [--verify] [--graph path]",
                 file=sys.stderr,
             )
@@ -1313,7 +1313,7 @@ def dispatch_command(cmd: str) -> None:
         question = " ".join(question_parts).strip()
         if not question:
             print(
-                'Usage: graphify council "<question>" [--lenses callers,callees,structure,evidence]\n'
+                'Usage: sanad council "<question>" [--lenses callers,callees,structure,evidence]\n'
                 "                [--budget-per-lens N] [--backend B] [--model M]\n"
                 "                [--no-verify] [--json] [--graph path]\n"
                 f"Available lenses: {', '.join(sorted(LENSES))}",
@@ -1398,7 +1398,7 @@ def dispatch_command(cmd: str) -> None:
                 sys.exit(1)
         if not targets:
             print(
-                'Usage: graphify predict "<file-or-symbol>" [more targets...] '
+                'Usage: sanad predict "<file-or-symbol>" [more targets...] '
                 "[--depth N] [--graph path] [--json]",
                 file=sys.stderr,
             )
@@ -1431,7 +1431,7 @@ def dispatch_command(cmd: str) -> None:
                 print(w)
 
     elif cmd == "check-impact":
-        # Edit blast-radius oracle, step 2 (after editing + `graphify update .`):
+        # Edit blast-radius oracle, step 2 (after editing + `sanad update .`):
         # diff the current graph against the prediction-time baseline. --strict
         # exits 3 on DEVIATION so agent hooks can force a review mechanically.
         from graphify.impact import (
@@ -1548,7 +1548,7 @@ def dispatch_command(cmd: str) -> None:
             text_arg = sys.stdin.read()  # pipe mode: graphify verify < answer.txt
         if not (claims_json or (text_arg or "").strip()):
             print(
-                'Usage: graphify verify "<text>" | --text "<text>" | --claims claims.json\n'
+                'Usage: sanad verify "<text>" | --text "<text>" | --claims claims.json\n'
                 "                [--graph path] [--max-hops N] [--strict] [--json]",
                 file=sys.stderr,
             )
@@ -1576,7 +1576,7 @@ def dispatch_command(cmd: str) -> None:
 
     elif cmd == "explain":
         if len(sys.argv) < 3:
-            print('Usage: graphify explain "<node>" [--graph path]', file=sys.stderr)
+            print('Usage: sanad explain "<node>" [--graph path]', file=sys.stderr)
             sys.exit(1)
         from graphify.serve import _find_node
         from networkx.readwrite import json_graph
@@ -1614,7 +1614,7 @@ def dispatch_command(cmd: str) -> None:
         )
         print(f"  Type:      {d.get('file_type', '')}")
         print(f"  Community: {d.get('community_name') or d.get('community', '')}")
-        # Work-memory overlay: a derived experiential hint from `graphify reflect`,
+        # Work-memory overlay: a derived experiential hint from `sanad reflect`,
         # merged in display-only from the .graphify_learning.json sidecar next to
         # graph.json. No line when the node has no overlay entry.
         try:
@@ -1667,7 +1667,7 @@ def dispatch_command(cmd: str) -> None:
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
         if subcmd != "multigraph":
             print(
-                "Usage: graphify diagnose multigraph "
+                "Usage: sanad diagnose multigraph "
                 "[--graph path] [--json] [--max-examples N] "
                 "[--directed] [--undirected] [--extract-path path]",
                 file=sys.stderr,
@@ -1760,7 +1760,7 @@ def dispatch_command(cmd: str) -> None:
     elif cmd == "add":
         if len(sys.argv) < 3:
             print(
-                "Usage: graphify add <url> [--author Name] [--contributor Name] [--dir ./raw]",
+                "Usage: sanad add <url> [--author Name] [--contributor Name] [--dir ./raw]",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -1966,7 +1966,7 @@ def dispatch_command(cmd: str) -> None:
             # Validate each community against the membership signature saved beside the
             # labels; any community that changed (or has no saved label) is renamed by
             # its current hub — deterministic and correct-by-construction — and the user
-            # is told to `graphify label` for fresh LLM names. Unchanged communities keep
+            # is told to `sanad label` for fresh LLM names. Unchanged communities keep
             # their saved label. When no signature sidecar exists (labels predate this),
             # fall back to hub-filling only the communities missing a label.
             from graphify.cluster import community_member_sigs, label_communities_by_hub
@@ -2007,16 +2007,16 @@ def dispatch_command(cmd: str) -> None:
                         changed += 1
             if changed:
                 print(
-                    f"[graphify] community set changed since labeling "
+                    f"[sanad] community set changed since labeling "
                     f"({len(existing_labels)} saved labels, {len(communities)} communities now; "
                     f"renamed {changed} community(ies) by their hub). "
-                    f"Run `graphify label` to refresh names with the LLM.",
+                    f"Run `sanad label` to refresh names with the LLM.",
                     file=sys.stderr,
                 )
         elif no_label and not force_relabel:
             labels = {cid: f"Community {cid}" for cid in communities}
         else:
-            # No labels file yet (or `graphify label` forced a refresh). When run
+            # No labels file yet (or `sanad label` forced a refresh). When run
             # standalone there is no orchestrating agent to do skill.md Step 5, so
             # auto-name communities rather than leave "Community N" (#1097).
             from graphify.cluster import label_communities_by_hub
@@ -2147,7 +2147,7 @@ def dispatch_command(cmd: str) -> None:
 
         print(f"Re-extracting code files in {watch_path} (no LLM needed)...")
         # Interactive CLI: block on the per-repo lock rather than skip, so the
-        # user sees their explicit `graphify update` complete instead of
+        # user sees their explicit `sanad update` complete instead of
         # exiting silently when a hook-driven rebuild happens to be running.
         ok = _rebuild_code(watch_path, force=force, no_cluster=no_cluster, block_on_lock=True)
         if ok:
@@ -2180,7 +2180,7 @@ def dispatch_command(cmd: str) -> None:
         sys.exit(0)
     elif cmd == "check-update":
         if len(sys.argv) < 3:
-            print("Usage: graphify check-update <path>", file=sys.stderr)
+            print("Usage: sanad check-update <path>", file=sys.stderr)
             sys.exit(1)
         from graphify.watch import check_update
 
@@ -2217,7 +2217,7 @@ def dispatch_command(cmd: str) -> None:
             elif a == "--label" and i_arg + 1 < len(args):
                 project_label = args[i_arg + 1]; i_arg += 2
             elif a in ("-h", "--help"):
-                print("Usage: graphify tree [--graph PATH] [--output HTML]")
+                print("Usage: sanad tree [--graph PATH] [--output HTML]")
                 print("  --graph PATH         path to graph.json (default graphify-out/graph.json)")
                 print("  --output HTML        output path (default graphify-out/GRAPH_TREE.html)")
                 print("  --root PATH          filesystem root (default: longest common dir of all source_files)")
@@ -2248,9 +2248,9 @@ def dispatch_command(cmd: str) -> None:
         # the union of current+other nodes/edges back to current. Exits 1 on
         # corrupt input so git surfaces the conflict instead of silently
         # accepting a poisoned merge (see F-005).
-        # Usage: graphify merge-driver %O %A %B  (set in .git/config merge driver)
+        # Usage: sanad merge-driver %O %A %B  (set in .git/config merge driver)
         if len(sys.argv) < 5:
-            print("Usage: graphify merge-driver <base> <current> <other>", file=sys.stderr)
+            print("Usage: sanad merge-driver <base> <current> <other>", file=sys.stderr)
             sys.exit(1)
         _base_path, _current_path, _other_path = sys.argv[2], sys.argv[3], sys.argv[4]
         # Hard caps so a malicious or corrupted graph.json cannot exhaust memory
@@ -2280,12 +2280,12 @@ def dispatch_command(cmd: str) -> None:
             G_cur, _ = _load_graph(_current_path)
             G_oth, _ = _load_graph(_other_path)
         except Exception as exc:
-            print(f"[graphify merge-driver] error loading graphs: {exc}", file=sys.stderr)
+            print(f"[sanad merge-driver] error loading graphs: {exc}", file=sys.stderr)
             sys.exit(1)  # surface the conflict so git doesn't accept a corrupt merge
         merged = _nx.compose(G_cur, G_oth)
         if merged.number_of_nodes() > _MERGE_MAX_NODES:
             print(
-                f"[graphify merge-driver] merged graph has {merged.number_of_nodes()} nodes, "
+                f"[sanad merge-driver] merged graph has {merged.number_of_nodes()} nodes, "
                 f"exceeds {_MERGE_MAX_NODES}-node cap; aborting merge.",
                 file=sys.stderr,
             )
@@ -2312,7 +2312,7 @@ def dispatch_command(cmd: str) -> None:
                 i += 1
         if len(graph_paths) < 2:
             print(
-                "Usage: graphify merge-graphs <graph1.json> <graph2.json> [...] [--out merged.json]",
+                "Usage: sanad merge-graphs <graph1.json> <graph2.json> [...] [--out merged.json]",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -2374,7 +2374,7 @@ def dispatch_command(cmd: str) -> None:
     elif cmd == "clone":
         if len(sys.argv) < 3:
             print(
-                "Usage: graphify clone <github-url> [--branch <branch>] [--out <dir>]",
+                "Usage: sanad clone <github-url> [--branch <branch>] [--out <dir>]",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -2398,7 +2398,7 @@ def dispatch_command(cmd: str) -> None:
     elif cmd == "export":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
         if subcmd not in ("html", "callflow-html", "obsidian", "wiki", "svg", "graphml", "neo4j", "falkordb"):
-            print("Usage: graphify export <format>", file=sys.stderr)
+            print("Usage: sanad export <format>", file=sys.stderr)
             print("  html      [--graph PATH] [--labels PATH] [--node-limit N] [--no-viz]", file=sys.stderr)
             print("  callflow-html [GRAPH|DIR] [--graph PATH] [--labels PATH] [--report PATH] [--sections PATH] [--output HTML]", file=sys.stderr)
             print("            [--lang auto|zh-CN|en] [--max-sections N] [--diagram-scale N]", file=sys.stderr)
@@ -2476,7 +2476,7 @@ def dispatch_command(cmd: str) -> None:
             elif a == "--max-diagram-edges" and i + 1 < len(args):
                 callflow_max_diagram_edges = int(args[i + 1]); i += 2
             elif a in ("-h", "--help") and subcmd == "callflow-html":
-                print("Usage: graphify export callflow-html [GRAPH|DIR] [--graph PATH] [--labels PATH]")
+                print("Usage: sanad export callflow-html [GRAPH|DIR] [--graph PATH] [--labels PATH]")
                 print("  --report PATH          path to GRAPH_REPORT.md")
                 print("  --sections PATH        JSON section definitions")
                 print("  --output HTML          output path (default graphify-out/<project>-callflow.html)")
@@ -2592,7 +2592,7 @@ def dispatch_command(cmd: str) -> None:
         # (`to_json` writes it on every node). The analysis sidecar is the
         # canonical source — but the post-commit / watch rebuild path doesn't
         # regenerate it, and `extract` may have its temp files cleaned up. When
-        # that happens, `graphify export html` previously bailed with
+        # that happens, `sanad export html` previously bailed with
         # "Single community - aggregated view not useful." even though the
         # per-node attribute had the right data all along. Reconstruct from
         # the graph itself so downstream subcommands (html, obsidian, wiki,
@@ -2651,7 +2651,7 @@ def dispatch_command(cmd: str) -> None:
             if not communities:
                 print(
                     "error: .graphify_analysis.json is missing or empty — refusing to export wiki to prevent data loss.\n"
-                    "Run `graphify extract .` (or `graphify cluster-only .`) to regenerate community data first.",
+                    "Run `sanad extract .` (or `sanad cluster-only .`) to regenerate community data first.",
                     file=sys.stderr,
                 )
                 sys.exit(1)
@@ -2741,7 +2741,7 @@ def dispatch_command(cmd: str) -> None:
                 else:
                     i += 1
             if not source:
-                print("Usage: graphify global add <graph.json> [--as <repo-tag>]", file=sys.stderr)
+                print("Usage: sanad global add <graph.json> [--as <repo-tag>]", file=sys.stderr)
                 sys.exit(1)
             tag = tag or source.parent.parent.name
             try:
@@ -2756,7 +2756,7 @@ def dispatch_command(cmd: str) -> None:
         elif subcmd == "remove":
             tag = sys.argv[3] if len(sys.argv) > 3 else ""
             if not tag:
-                print("Usage: graphify global remove <repo-tag>", file=sys.stderr); sys.exit(1)
+                print("Usage: sanad global remove <repo-tag>", file=sys.stderr); sys.exit(1)
             try:
                 removed = _global_remove(tag)
                 print(f"Removed '{tag}' from global graph ({removed} nodes pruned).")
@@ -2765,7 +2765,7 @@ def dispatch_command(cmd: str) -> None:
         elif subcmd == "list":
             repos = _global_list()
             if not repos:
-                print("Global graph is empty. Use 'graphify global add' to add a project.")
+                print("Global graph is empty. Use 'sanad global add' to add a project.")
             else:
                 print(f"Global graph: {_global_path()}")
                 for tag, info in repos.items():
@@ -2773,7 +2773,7 @@ def dispatch_command(cmd: str) -> None:
         elif subcmd == "path":
             print(_global_path())
         else:
-            print("Usage: graphify global [add|remove|list|path]", file=sys.stderr); sys.exit(1)
+            print("Usage: sanad global [add|remove|list|path]", file=sys.stderr); sys.exit(1)
 
     elif cmd == "extract":
         # Headless full-pipeline extraction for CI / scripts (#698).
@@ -2784,7 +2784,7 @@ def dispatch_command(cmd: str) -> None:
         # has an API key set.
         if len(sys.argv) < 3:
             print(
-                "Usage: graphify extract <path> [--backend gemini|kimi|claude|openai|deepseek|ollama] "
+                "Usage: sanad extract <path> [--backend gemini|kimi|claude|openai|deepseek|ollama] "
                 "[--model M] [--mode deep] [--out DIR] [--google-workspace] [--no-cluster] "
                 "[--max-workers N] [--token-budget N] [--max-concurrency N] "
                 "[--api-timeout S] [--postgres DSN] [--cargo] [--timing]",
@@ -2933,7 +2933,7 @@ def dispatch_command(cmd: str) -> None:
             sys.exit(2)
         deep_mode = extract_mode == "deep"
         if deep_mode:
-            print("[graphify extract] deep mode enabled: richer semantic extraction")
+            print("[sanad extract] deep mode enabled: richer semantic extraction")
 
         # CLI flag wins over env var. Setting GRAPHIFY_API_TIMEOUT here so
         # _call_openai_compat picks it up without needing a new kwarg path.
@@ -2969,7 +2969,7 @@ def dispatch_command(cmd: str) -> None:
             unchanged_total = 0
             files_by_type = {}
         elif incremental_mode:
-            print(f"[graphify extract] incremental scan of {target}")
+            print(f"[sanad extract] incremental scan of {target}")
             detection = _detect_incremental(
                 target,
                 manifest_path=str(manifest_path),
@@ -2985,7 +2985,7 @@ def dispatch_command(cmd: str) -> None:
             deleted_files = list(detection.get("deleted_files", []))
             unchanged_total = sum(len(v) for v in detection.get("unchanged_files", {}).values())
         else:
-            print(f"[graphify extract] scanning {target}")
+            print(f"[sanad extract] scanning {target}")
             detection = _detect(target, google_workspace=google_workspace or None, extra_excludes=cli_excludes or None, cache_root=out_root)
             files_by_type = detection.get("files", {})
             code_files = [Path(p) for p in files_by_type.get("code", [])]
@@ -3002,7 +3002,7 @@ def dispatch_command(cmd: str) -> None:
         # silently dropping it.
         if code_only and semantic_files:
             print(
-                f"[graphify extract] --code-only: skipping {len(semantic_files)} "
+                f"[sanad extract] --code-only: skipping {len(semantic_files)} "
                 f"non-code file(s) ({len(doc_files)} docs, {len(paper_files)} papers, "
                 f"{len(image_files)} images) — no LLM extraction"
             )
@@ -3012,13 +3012,13 @@ def dispatch_command(cmd: str) -> None:
             image_files = []
         if incremental_mode:
             print(
-                f"[graphify extract] {len(code_files)} code, {len(doc_files)} docs, "
+                f"[sanad extract] {len(code_files)} code, {len(doc_files)} docs, "
                 f"{len(paper_files)} papers, {len(image_files)} images changed; "
                 f"{unchanged_total} unchanged; {len(deleted_files)} deleted"
             )
         else:
             print(
-                f"[graphify extract] found {len(code_files)} code, "
+                f"[sanad extract] found {len(code_files)} code, "
                 f"{len(doc_files)} docs, {len(paper_files)} papers, "
                 f"{len(image_files)} images"
             )
@@ -3030,7 +3030,7 @@ def dispatch_command(cmd: str) -> None:
             _names = ", ".join(sorted({Path(p).name for p in _unclassified})[:6])
             _more = f" (+{len(_unclassified) - 6} more)" if len(_unclassified) > 6 else ""
             print(
-                f"[graphify extract] {len(_unclassified)} file(s) not classified "
+                f"[sanad extract] {len(_unclassified)} file(s) not classified "
                 f"(no supported extension or shebang), skipped: {_names}{_more}"
             )
         stages.mark("detect")
@@ -3137,11 +3137,11 @@ def dispatch_command(cmd: str) -> None:
             ast_kwargs: dict = {"cache_root": out_root}
             if cli_max_workers is not None:
                 ast_kwargs["max_workers"] = cli_max_workers
-            print(f"[graphify extract] AST extraction on {len(code_files)} code files...")
+            print(f"[sanad extract] AST extraction on {len(code_files)} code files...")
             try:
                 ast_result = _ast_extract(code_files, **ast_kwargs)
             except Exception as exc:
-                print(f"[graphify extract] AST extraction failed: {exc}", file=sys.stderr)
+                print(f"[sanad extract] AST extraction failed: {exc}", file=sys.stderr)
                 ast_result = {"nodes": [], "edges": [], "input_tokens": 0, "output_tokens": 0}
         stages.mark("AST extract")
 
@@ -3168,10 +3168,10 @@ def dispatch_command(cmd: str) -> None:
             sem_result["edges"].extend(cached_edges)
             sem_result["hyperedges"].extend(cached_hyperedges)
             if sem_cache_hits:
-                print(f"[graphify extract] semantic cache: {sem_cache_hits} hit / {sem_cache_misses} miss")
+                print(f"[sanad extract] semantic cache: {sem_cache_hits} hit / {sem_cache_misses} miss")
 
             if uncached_paths:
-                print(f"[graphify extract] semantic extraction on {len(uncached_paths)} files via {backend}...")
+                print(f"[sanad extract] semantic extraction on {len(uncached_paths)} files via {backend}...")
                 corpus_kwargs: dict = {
                     "backend": backend,
                     "model": model,
@@ -3193,7 +3193,7 @@ def dispatch_command(cmd: str) -> None:
                     _chunk_stats["total"] = total
                     _chunk_stats["succeeded"] += 1
                     print(
-                        f"[graphify extract] chunk {idx + 1}/{total} done",
+                        f"[sanad extract] chunk {idx + 1}/{total} done",
                         flush=True,
                     )
                 corpus_kwargs["on_chunk_done"] = _progress
@@ -3208,7 +3208,7 @@ def dispatch_command(cmd: str) -> None:
                     sys.exit(1)
                 except Exception as exc:
                     print(
-                        f"[graphify extract] semantic extraction failed: {exc}",
+                        f"[sanad extract] semantic extraction failed: {exc}",
                         file=sys.stderr,
                     )
                     fresh = {"nodes": [], "edges": [], "hyperedges": [], "input_tokens": 0, "output_tokens": 0}
@@ -3218,7 +3218,7 @@ def dispatch_command(cmd: str) -> None:
                 # fail instead of writing an AST-only graph with exit 0.
                 if uncached_paths and _chunk_stats["succeeded"] == 0:
                     print(
-                        f"[graphify extract] error: all semantic chunks failed "
+                        f"[sanad extract] error: all semantic chunks failed "
                         f"for backend '{backend}' ({len(uncached_paths)} uncached files) - "
                         f"see per-chunk errors above. If you see 'requires the X package', "
                         f"run `pip install X` and retry.",
@@ -3233,7 +3233,7 @@ def dispatch_command(cmd: str) -> None:
                         root=out_root,
                     )
                 except Exception as exc:
-                    print(f"[graphify extract] warning: could not write semantic cache: {exc}", file=sys.stderr)
+                    print(f"[sanad extract] warning: could not write semantic cache: {exc}", file=sys.stderr)
                 sem_result["nodes"].extend(fresh.get("nodes", []))
                 sem_result["edges"].extend(fresh.get("edges", []))
                 sem_result["hyperedges"].extend(fresh.get("hyperedges", []))
@@ -3264,31 +3264,31 @@ def dispatch_command(cmd: str) -> None:
                         pass
             _prune_semantic_cache(out_root, _live_hashes)
         except Exception as exc:
-            print(f"[graphify extract] warning: could not prune semantic cache: {exc}", file=sys.stderr)
+            print(f"[sanad extract] warning: could not prune semantic cache: {exc}", file=sys.stderr)
         stages.mark("semantic extract")
 
         pg_result: dict = {"nodes": [], "edges": []}
         if cli_postgres_dsn is not None:
             from graphify.pg_introspect import introspect_postgres
-            print(f"[graphify extract] introspecting PostgreSQL schema...")
+            print(f"[sanad extract] introspecting PostgreSQL schema...")
             try:
                 pg_result = introspect_postgres(cli_postgres_dsn)
             except (ConnectionError, ImportError) as exc:
                 print(f"error: {exc}", file=sys.stderr)
                 sys.exit(1)
-            print(f"[graphify extract] PostgreSQL: {len(pg_result['nodes'])} nodes, "
+            print(f"[sanad extract] PostgreSQL: {len(pg_result['nodes'])} nodes, "
                   f"{len(pg_result['edges'])} edges")
 
         cargo_result: dict = {"nodes": [], "edges": []}
         if cli_cargo:
             from graphify.cargo_introspect import introspect_cargo
-            print("[graphify extract] introspecting Cargo workspace...")
+            print("[sanad extract] introspecting Cargo workspace...")
             try:
                 cargo_result = introspect_cargo(target)
             except (ConnectionError, ImportError, OSError) as exc:
                 print(f"error: {exc}", file=sys.stderr)
                 sys.exit(1)
-            print(f"[graphify extract] Cargo: {len(cargo_result['nodes'])} nodes, "
+            print(f"[sanad extract] Cargo: {len(cargo_result['nodes'])} nodes, "
                   f"{len(cargo_result['edges'])} edges")
 
         # Merge AST + semantic + pg_result + cargo_result. Order matters for deduplication: passing AST
@@ -3342,13 +3342,13 @@ def dispatch_command(cmd: str) -> None:
                 and not cargo_result.get("edges")
             ):
                 print(
-                    "[graphify extract] no incremental changes detected "
+                    "[sanad extract] no incremental changes detected "
                     "(--no-cluster); outputs left untouched."
                 )
                 try:
                     _save_manifest(_manifest_files, manifest_path=str(manifest_path), kind="both", root=target)
                 except Exception as exc:
-                    print(f"[graphify extract] warning: could not write manifest: {exc}", file=sys.stderr)
+                    print(f"[sanad extract] warning: could not write manifest: {exc}", file=sys.stderr)
                 stages.total()
                 sys.exit(0)
 
@@ -3371,13 +3371,13 @@ def dispatch_command(cmd: str) -> None:
                 backend, merged["input_tokens"], merged["output_tokens"]
             )
             print(
-                f"[graphify extract] wrote {graph_json_path} — "
+                f"[sanad extract] wrote {graph_json_path} — "
                 f"{len(merged['nodes'])} nodes, {len(merged['edges'])} edges "
                 f"(no clustering)"
             )
             if merged["input_tokens"] or merged["output_tokens"]:
                 print(
-                    f"[graphify extract] tokens: "
+                    f"[sanad extract] tokens: "
                     f"{merged['input_tokens']:,} in / "
                     f"{merged['output_tokens']:,} out, "
                     f"est. cost: ${cost:.4f}"
@@ -3385,19 +3385,19 @@ def dispatch_command(cmd: str) -> None:
             try:
                 _save_manifest(_manifest_files, manifest_path=str(manifest_path), kind="both", root=target)
             except Exception as exc:
-                print(f"[graphify extract] warning: could not write manifest: {exc}", file=sys.stderr)
+                print(f"[sanad extract] warning: could not write manifest: {exc}", file=sys.stderr)
             if global_merge:
                 from graphify.global_graph import global_add as _global_add
                 _tag = global_repo_tag or target.name
                 try:
                     result = _global_add(graphify_out / "graph.json", _tag)
                     if result["skipped"]:
-                        print(f"[graphify global] '{_tag}' unchanged since last add - skipped.")
+                        print(f"[sanad global] '{_tag}' unchanged since last add - skipped.")
                     else:
-                        print(f"[graphify global] '{_tag}' merged into global graph "
+                        print(f"[sanad global] '{_tag}' merged into global graph "
                               f"(+{result['nodes_added']} nodes, -{result['nodes_removed']} pruned).")
                 except Exception as exc:
-                    print(f"[graphify global] warning: failed to merge into global graph: {exc}", file=sys.stderr)
+                    print(f"[sanad global] warning: failed to merge into global graph: {exc}", file=sys.stderr)
             stages.total()
             sys.exit(0)
 
@@ -3425,7 +3425,7 @@ def dispatch_command(cmd: str) -> None:
         stages.mark("build")
         if G.number_of_nodes() == 0:
             print(
-                "[graphify extract] graph is empty — extraction produced no nodes. "
+                "[sanad extract] graph is empty — extraction produced no nodes. "
                 "Possible causes: all files skipped, binary-only corpus, or LLM "
                 "returned no edges.",
                 file=sys.stderr,
@@ -3459,12 +3459,12 @@ def dispatch_command(cmd: str) -> None:
             try:
                 result = _global_add(graphify_out / "graph.json", _tag)
                 if result["skipped"]:
-                    print(f"[graphify global] '{_tag}' unchanged since last add - skipped.")
+                    print(f"[sanad global] '{_tag}' unchanged since last add - skipped.")
                 else:
-                    print(f"[graphify global] '{_tag}' merged into global graph "
+                    print(f"[sanad global] '{_tag}' merged into global graph "
                           f"(+{result['nodes_added']} nodes, -{result['nodes_removed']} pruned).")
             except Exception as exc:
-                print(f"[graphify global] warning: failed to merge into global graph: {exc}", file=sys.stderr)
+                print(f"[sanad global] warning: failed to merge into global graph: {exc}", file=sys.stderr)
         analysis = {
             "communities": {str(k): v for k, v in communities.items()},
             "cohesion": {str(k): v for k, v in cohesion.items()},
@@ -3479,27 +3479,27 @@ def dispatch_command(cmd: str) -> None:
         try:
             _save_manifest(_manifest_files, manifest_path=str(manifest_path), kind="both", root=target)
         except Exception as exc:
-            print(f"[graphify extract] warning: could not write manifest: {exc}", file=sys.stderr)
+            print(f"[sanad extract] warning: could not write manifest: {exc}", file=sys.stderr)
 
         cost = _estimate_cost(backend, merged["input_tokens"], merged["output_tokens"])
         print(
-            f"[graphify extract] wrote {graph_json_path}: "
+            f"[sanad extract] wrote {graph_json_path}: "
             f"{G.number_of_nodes()} nodes, {G.number_of_edges()} edges, "
             f"{len(communities)} communities"
         )
-        print(f"[graphify extract] wrote {analysis_path}")
+        print(f"[sanad extract] wrote {analysis_path}")
         if incremental_mode:
             print(
-                f"[graphify extract] incremental summary: "
+                f"[sanad extract] incremental summary: "
                 f"{sem_cache_hits + unchanged_total} files cached/unchanged, "
                 f"{len(code_files) + sem_cache_misses} re-extracted, "
                 f"{len(deleted_files)} deleted"
             )
         elif sem_cache_hits:
-            print(f"[graphify extract] semantic cache: {sem_cache_hits} cached, {sem_cache_misses} re-extracted")
+            print(f"[sanad extract] semantic cache: {sem_cache_hits} cached, {sem_cache_misses} re-extracted")
         if merged["input_tokens"] or merged["output_tokens"]:
             print(
-                f"[graphify extract] tokens: "
+                f"[sanad extract] tokens: "
                 f"{merged['input_tokens']:,} in / "
                 f"{merged['output_tokens']:,} out, "
                 f"est. cost (~{backend}): ${cost:.4f}"
@@ -3508,8 +3508,8 @@ def dispatch_command(cmd: str) -> None:
         # community labels are produced by `cluster-only` (or an agent's Step 5).
         # Point standalone users at it so communities get named (#1097).
         print(
-            "[graphify extract] next: run "
-            f"`graphify cluster-only {graphify_out.parent}` "
+            "[sanad extract] next: run "
+            f"`sanad cluster-only {graphify_out.parent}` "
             "to generate GRAPH_REPORT.md and name communities"
         )
         stages.total()
@@ -3523,7 +3523,7 @@ def dispatch_command(cmd: str) -> None:
         # Stdout: "Cache: N hit, M miss"
         from graphify.cache import check_semantic_cache
         if len(sys.argv) < 3:
-            print("Usage: graphify cache-check <files_from> [--root <dir>]", file=sys.stderr)
+            print("Usage: sanad cache-check <files_from> [--root <dir>]", file=sys.stderr)
             sys.exit(1)
         files_from = Path(sys.argv[2])
         root = Path(".")
@@ -3553,7 +3553,7 @@ def dispatch_command(cmd: str) -> None:
         # Deduplicates nodes by id (first writer wins). Sums token counts.
         import glob as _glob
         if len(sys.argv) < 3:
-            print("Usage: graphify merge-chunks <chunk_files...> --out <path>", file=sys.stderr)
+            print("Usage: sanad merge-chunks <chunk_files...> --out <path>", file=sys.stderr)
             sys.exit(1)
         out_path: Path | None = None
         chunk_args: list[str] = []
@@ -3578,7 +3578,7 @@ def dispatch_command(cmd: str) -> None:
             try:
                 chunk = json.loads(Path(cf).read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError) as exc:
-                print(f"[graphify merge-chunks] warning: skipping {cf}: {exc}", file=sys.stderr)
+                print(f"[sanad merge-chunks] warning: skipping {cf}: {exc}", file=sys.stderr)
                 continue
             for n in chunk.get("nodes", []):
                 if n.get("id") not in seen_ids:
@@ -3600,7 +3600,7 @@ def dispatch_command(cmd: str) -> None:
         # Merges cached semantic results with freshly-extracted chunk results.
         # Deduplicates nodes by id (cached entries take priority over new ones).
         if len(sys.argv) < 3:
-            print("Usage: graphify merge-semantic --cached <path> --new <path> --out <path>", file=sys.stderr)
+            print("Usage: sanad merge-semantic --cached <path> --new <path> --out <path>", file=sys.stderr)
             sys.exit(1)
         cached_path: Path | None = None
         new_path: Path | None = None
@@ -3637,7 +3637,7 @@ def dispatch_command(cmd: str) -> None:
         print(f"Merged: {len(merged2['nodes'])} nodes, {len(merged2['edges'])} edges")
 
     elif Path(cmd).exists() or cmd in (".", "..") or cmd.startswith(("./", "../", "/", "~")):
-        # User ran `graphify <path>` directly — treat as `graphify extract <path>`.
+        # User ran `graphify <path>` directly — treat as `sanad extract <path>`.
         # Common when following the PowerShell note in README (`graphify .`) or
         # copy-pasting skill invocations without the leading slash.
         sys.argv.insert(2, sys.argv[1])
@@ -3645,5 +3645,5 @@ def dispatch_command(cmd: str) -> None:
         _reenter_main()
     else:
         print(f"error: unknown command '{cmd}'", file=sys.stderr)
-        print("Run 'graphify --help' for usage.", file=sys.stderr)
+        print("Run 'sanad --help' for usage.", file=sys.stderr)
         sys.exit(1)

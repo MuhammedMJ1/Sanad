@@ -1612,7 +1612,7 @@ def write_callflow_html(
     if not paths["graph"].exists():
         raise FileNotFoundError(
             f"graphify output not found: {paths['graph']}. "
-            "Run graphify first or pass --graph /path/to/graph.json."
+            "Run sanad first or pass --graph /path/to/graph.json."
         )
 
     # Load data
